@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   nginx:
     image: nginx:alpine
@@ -18,8 +16,8 @@ services:
 
   platform:
     build:
-      context: ../agent-comm-platform
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: agent-comm-platform/Dockerfile
     container_name: agent-platform
     environment:
       - PLATFORM_ADMIN_TOKEN=${PLATFORM_ADMIN_TOKEN}
@@ -35,7 +33,7 @@ services:
 
   web:
     build:
-      context: ../agent-collaboration-web
+      context: ./agent-collaboration-web
       dockerfile: Dockerfile
     container_name: agent-web
     environment:

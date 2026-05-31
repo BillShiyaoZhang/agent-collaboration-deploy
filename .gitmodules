@@ -1,0 +1,9 @@
+[submodule "agent-comm"]
+	path = agent-comm
+	url = https://github.com/BillShiyaoZhang/agent-comm.git
+[submodule "agent-comm-platform"]
+	path = agent-comm-platform
+	url = https://github.com/BillShiyaoZhang/agent-comm-platform.git
+[submodule "agent-collaboration-web"]
+	path = agent-collaboration-web
+	url = https://github.com/BillShiyaoZhang/agent-collaboration-web.git
