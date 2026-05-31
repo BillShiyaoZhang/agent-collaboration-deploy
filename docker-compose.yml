@@ -16,8 +16,8 @@ services:
 
   platform:
     build:
-      context: ..
-      dockerfile: agent-comm-platform/Dockerfile
+      context: ./agent-comm-platform
+      dockerfile: Dockerfile
     container_name: agent-platform
     environment:
       - PLATFORM_ADMIN_TOKEN=${PLATFORM_ADMIN_TOKEN}
