@@ -18,7 +18,7 @@ services:
 
   platform:
     build:
-      context: ./agent-comm-platform
+      context: ../agent-comm-platform
       dockerfile: Dockerfile
     container_name: agent-platform
     environment:
@@ -35,7 +35,7 @@ services:
 
   web:
     build:
-      context: ./agent-collaboration-web
+      context: ../agent-collaboration-web
       dockerfile: Dockerfile
     container_name: agent-web
     environment:
