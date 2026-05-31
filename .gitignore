@@ -1,0 +1,19 @@
+# Environment variables (set before running docker compose)
+.env
+
+# Data volumes
+data/
+
+# Build artifacts
+.next/
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
