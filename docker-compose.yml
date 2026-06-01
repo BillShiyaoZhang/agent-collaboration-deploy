@@ -37,12 +37,12 @@ services:
       dockerfile: Dockerfile
     container_name: agent-web
     environment:
-      - DATABASE_URL=file:./prod.db
+      - DATABASE_URL=file:/app/data/prod.db
       - NEXTAUTH_URL=${NEXTAUTH_URL:-http://8.130.40.38}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - AGENT_PLATFORM_URL=http://platform:8080
     volumes:
-      - web_prisma:/app/prisma
+      - web_data:/app/data
     networks:
       - agent-net
     restart: unless-stopped
@@ -53,4 +53,4 @@ networks:
 
 volumes:
   platform_data:
-  web_prisma:
+  web_data:
