@@ -44,6 +44,23 @@ cd agent-collaboration-deploy
 docker compose up --build -d
 ```
 
+## Update Deployment
+
+当子仓库有新代码推送后，在服务器上执行以下命令即可完成一键更新：
+
+```bash
+# 拉取 deploy 仓库本身及所有子模块的最新代码
+git pull --recurse-submodules
+
+# 重新构建并热重启所有容器（零停机滚动更新）
+docker compose up --build -d
+```
+
+> **Prisma Schema 变更时**（web 子模块更新了数据库结构），需额外执行：
+> ```bash
+> docker compose exec web npx prisma migrate deploy
+> ```
+
 ## Access
 
 - Web UI: http://8.130.40.38/
