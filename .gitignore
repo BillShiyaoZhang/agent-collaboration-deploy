@@ -17,3 +17,11 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# Dependencies & Build artifacts
+node_modules/
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.pyc

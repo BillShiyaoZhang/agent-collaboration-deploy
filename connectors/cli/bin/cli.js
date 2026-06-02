@@ -1,0 +1,284 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
+const { execSync, execFileSync } = require("child_process");
+
+console.log("=== Agent Comm unified connector setup ===");
+
+const cwd = process.cwd();
+
+// Detect framework
+const isOpenClaw = fs.existsSync(path.join(cwd, "package.json"));
+const isHermes = fs.existsSync(path.join(cwd, "config.yaml")) || fs.existsSync(path.join(cwd, "pyproject.toml"));
+
+if (!isOpenClaw && !isHermes) {
+  console.error("Error: Could not detect OpenClaw or Hermes framework in the current directory.");
+  console.error("Please run this command from the root of your Agent project.");
+  process.exit(1);
+}
+
+const framework = isOpenClaw ? "OpenClaw" : "Hermes";
+console.log(`Detected Framework: ${framework}`);
+
+// Paths to local packages in our repo
+const openclawChannelPath = path.resolve(__dirname, "../../openclaw-channel");
+const hermesPlatformPath = path.resolve(__dirname, "../../hermes-platform");
+const goSDKPath = path.resolve(__dirname, "../../../agent-comm-platform/agent-comm");
+
+const https = require("https");
+
+function fetchJson(url) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers: { "User-Agent": "agent-comm-cli" }, timeout: 5000 }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        fetchJson(res.headers.location).then(resolve).catch(reject);
+        return;
+      }
+      if (res.statusCode !== 200) {
+        reject(new Error(`Server returned status code ${res.statusCode}`));
+        return;
+      }
+      let body = "";
+      res.on("data", chunk => { body += chunk; });
+      res.on("end", () => {
+        try { resolve(JSON.parse(body)); }
+        catch (e) { reject(e); }
+      });
+    });
+    req.on("timeout", () => {
+      req.destroy();
+      reject(new Error("Connection timeout"));
+    });
+    req.on("error", reject);
+  });
+}
+
+function downloadFile(url, dest) {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(dest);
+    const req = https.get(url, { headers: { "User-Agent": "agent-comm-cli" }, timeout: 5000 }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        file.close();
+        try { fs.unlinkSync(dest); } catch(e) {}
+        downloadFile(res.headers.location, dest).then(resolve).catch(reject);
+        return;
+      }
+      if (res.statusCode !== 200) {
+        file.close();
+        try { fs.unlinkSync(dest); } catch(e) {}
+        reject(new Error(`Server returned status code ${res.statusCode}`));
+        return;
+      }
+      res.pipe(file);
+      file.on("finish", () => {
+        file.close();
+        resolve();
+      });
+    });
+    req.on("timeout", () => {
+      req.destroy();
+      file.close();
+      try { fs.unlinkSync(dest); } catch(e) {}
+      reject(new Error("Connection timeout"));
+    });
+    req.on("error", (err) => {
+      file.close();
+      try { fs.unlinkSync(dest); } catch(e) {}
+      reject(err);
+    });
+  });
+}
+
+async function installGoHelper() {
+  const osType = process.platform === "win32" ? "windows" : (process.platform === "darwin" ? "darwin" : "linux");
+  const archType = process.arch === "x64" ? "amd64" : (process.arch === "arm64" ? "arm64" : "amd64");
+  const targetAssetName = `agent-comm-helper-${osType}-${archType}${osType === "windows" ? ".exe" : ""}`;
+
+  console.log(`\n1. Acquiring Go Helper tool...`);
+  console.log(`Checking for precompiled binary: ${targetAssetName} from GitHub Releases...`);
+
+  const binDir = path.join(os.homedir(), ".agent-comm", "bin");
+  fs.mkdirSync(binDir, { recursive: true });
+  const destPath = path.join(binDir, osType === "windows" ? "agent-comm-helper.exe" : "agent-comm-helper");
+
+  try {
+    const releaseData = await fetchJson("https://api.github.com/repos/BillShiyaoZhang/agent-comm/releases/latest");
+    const asset = releaseData.assets.find(a => a.name === targetAssetName);
+    if (!asset) {
+      throw new Error(`Asset ${targetAssetName} not found in the latest release.`);
+    }
+
+    console.log(`Downloading helper from: ${asset.browser_download_url}`);
+    await downloadFile(asset.browser_download_url, destPath);
+    try {
+      fs.chmodSync(destPath, "755");
+    } catch (e) {}
+    console.log("Precompiled helper installed successfully.");
+    return;
+  } catch (err) {
+    console.warn(`Could not download precompiled helper (${err.message}).`);
+    console.log("Falling back to local Go compilation...");
+  }
+
+  // Fallback compile
+  try {
+    if (process.platform === "win32") {
+      console.log("Running compilation inside WSL...");
+      execSync(`wsl mkdir -p ~/.agent-comm/bin`, { stdio: "inherit" });
+      execSync(`wsl go build -o ~/.agent-comm/bin/agent-comm-helper ./cmd/helper`, {
+        cwd: goSDKPath,
+        stdio: "inherit"
+      });
+    } else {
+      console.log("Running compilation natively...");
+      execSync(`mkdir -p ~/.agent-comm/bin`, { stdio: "inherit" });
+      execSync(`go build -o ~/.agent-comm/bin/agent-comm-helper ./cmd/helper`, {
+        cwd: goSDKPath,
+        stdio: "inherit"
+      });
+    }
+    console.log("Go Helper compiled successfully from source.");
+  } catch (err) {
+    console.error(`Local compilation failed: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+// Invoke helper installation
+(async () => {
+  await installGoHelper();
+  
+  // Continue setup after async helper installation
+  continueSetup();
+})();
+
+function continueSetup() {
+
+// 2. Install package dependency
+console.log(`\n2. Installing ${framework} channel connector adapter...`);
+try {
+  if (isOpenClaw) {
+    console.log(`Running: npm install ${openclawChannelPath}`);
+    execSync(`npm install ${openclawChannelPath}`, { stdio: "inherit", cwd });
+  } else {
+    // Hermes: python package setup
+    // Try uv first, then fallback to pip
+    let hasUv = false;
+    try {
+      execSync("uv --version", { stdio: "ignore" });
+      hasUv = true;
+    } catch (e) {}
+
+    if (hasUv) {
+      console.log(`Running: uv pip install -e ${hermesPlatformPath}`);
+      execSync(`uv pip install -e ${hermesPlatformPath}`, { stdio: "inherit", cwd });
+    } else {
+      console.log(`Running: pip install -e ${hermesPlatformPath}`);
+      execSync(`pip install -e ${hermesPlatformPath}`, { stdio: "inherit", cwd });
+    }
+  }
+  console.log("Channel adapter installed successfully.");
+} catch (err) {
+  console.error(`Installation failed: ${err.message}`);
+  process.exit(1);
+}
+
+// 3. Generate URN and Keys
+console.log("\n3. Generating secure keys & identity URN...");
+const keysDir = isOpenClaw
+  ? path.join(os.homedir(), ".openclaw", "keys", "agent-comm")
+  : path.join(os.homedir(), ".hermes", "keys", "agent-comm");
+
+fs.mkdirSync(keysDir, { recursive: true });
+
+let initRes;
+try {
+  if (process.platform === "win32") {
+    const wslKeysDir = execSync(`wsl wslpath '${keysDir.replace(/\\/g, "/")}'`).toString().trim();
+    const helperOutput = execFileSync("wsl", ["~/.agent-comm/bin/agent-comm-helper", "init", wslKeysDir]).toString().trim();
+    initRes = JSON.parse(helperOutput);
+  } else {
+    const home = os.homedir();
+    const helperPath = path.join(home, ".agent-comm", "bin", "agent-comm-helper");
+    const helperOutput = execFileSync(helperPath, ["init", keysDir]).toString().trim();
+    initRes = JSON.parse(helperOutput);
+  }
+
+  if (initRes.error) {
+    throw new Error(initRes.error);
+  }
+
+  console.log(`URN generated: ${initRes.urn}`);
+  console.log(`Peer ID derived: ${initRes.peer_id}`);
+  console.log(`Keys stored in: ${keysDir}`);
+} catch (err) {
+  console.error(`Key generation failed: ${err.message}`);
+  process.exit(1);
+}
+
+// 4. Update configuration file
+console.log("\n4. Injecting configuration into framework settings...");
+try {
+  if (isOpenClaw) {
+    const settingsPath = path.join(cwd, "settings.json");
+    let settings = {};
+    if (fs.existsSync(settingsPath)) {
+      try {
+        settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+      } catch (e) {
+        console.warn("Warning: Could not parse existing settings.json, creating a new one.");
+      }
+    }
+
+    if (!settings.channels) settings.channels = {};
+    settings.channels["agent-comm"] = {
+      enabled: true,
+      platform_url: "http://8.130.40.38/api/v1/mq",
+      urn: initRes.urn,
+      keys_dir: "~/.openclaw/keys/agent-comm"
+    };
+
+    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), "utf8");
+    console.log(`Successfully updated ${settingsPath}`);
+  } else {
+    // Hermes: config.yaml
+    const configPath = path.join(cwd, "config.yaml");
+    let content = "";
+    if (fs.existsSync(configPath)) {
+      content = fs.readFileSync(configPath, "utf8");
+    }
+
+    const configBlock = `
+platforms:
+  agent_comm:
+    enabled: true
+    platform_url: "http://8.130.40.38"
+    urn: "${initRes.urn}"
+    keys_path: "~/.hermes/keys/agent-comm"
+`;
+
+    // Simple robust yaml patch
+    if (content.includes("platforms:")) {
+      // Find where platforms starts, check if agent_comm is already there, or append to it
+      if (content.includes("agent_comm:")) {
+        console.log("Configuration for agent_comm already exists in config.yaml. Skipping YAML write.");
+      } else {
+        content = content.replace("platforms:", "platforms:\n  agent_comm:\n    enabled: true\n    platform_url: \"http://8.130.40.38\"\n    urn: \"" + initRes.urn + "\"\n    keys_path: \"~/.hermes/keys/agent-comm\"");
+        fs.writeFileSync(configPath, content, "utf8");
+        console.log(`Successfully patched ${configPath}`);
+      }
+    } else {
+      content += configBlock;
+      fs.writeFileSync(configPath, content, "utf8");
+      console.log(`Successfully created/updated ${configPath}`);
+    }
+  }
+} catch (err) {
+  console.error(`Configuration update failed: ${err.message}`);
+  process.exit(1);
+}
+
+console.log("\nSetup completed successfully! Your Agent Comm connector is configured and ready.");
+}
