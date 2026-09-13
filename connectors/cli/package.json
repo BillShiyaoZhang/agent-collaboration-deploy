@@ -1,13 +1,15 @@
 {
   "name": "@agent-comm/cli",
   "version": "1.0.0",
-  "description": "One-click interactive CLI setup tool for Agent Comm connectors",
+  "description": "Retired deployment installer; prints the SDK migration instructions and exits unsuccessfully",
+  "private": true,
   "main": "bin/cli.js",
   "bin": {
     "agent-comm-cli": "./bin/cli.js"
   },
   "scripts": {
-    "start": "node ./bin/cli.js"
+    "start": "node ./bin/cli.js",
+    "test": "node --test test/*.test.js"
   },
   "author": "Antigravity",
   "license": "MIT",

@@ -10,22 +10,31 @@ Unified docker-compose setup for agent-comm-platform and agent-collaboration-web
 
 ## Prerequisites
 
-Clone all repositories into the same parent directory:
+Install Docker with Compose v2, then clone this deployment repository with its
+pinned, nested submodules. Compose builds from directories inside this checkout:
 
 ```
-~/
-├── agent-collaboration-deploy/    # this repo
-├── agent-comm-platform/          # Go backend
-├── agent-collaboration-web/       # Next.js frontend
-└── agent-comm/                    # Go SDK (sibling to agent-comm-platform)
+agent-collaboration-deploy/
+├── docker-compose.yml
+├── agent-collaboration-web/       # Next.js frontend submodule
+└── agent-comm-platform/          # Go backend submodule
+    └── agent-comm/               # SDK/helper and current connectors submodule
 ```
 
 ```bash
-git clone https://github.com/BillShiyaoZhang/agent-collaboration-deploy.git
-git clone https://github.com/BillShiyaoZhang/agent-comm-platform.git
-git clone https://github.com/BillShiyaoZhang/agent-collaboration-web.git
-git clone https://github.com/BillShiyaoZhang/agent-comm.git
+git clone --recurse-submodules https://github.com/BillShiyaoZhang/agent-collaboration-deploy.git
+cd agent-collaboration-deploy
 ```
+
+For an existing clone, initialize both levels before the first build:
+
+```bash
+git submodule sync --recursive
+git submodule update --init --recursive
+```
+
+These commands check out the versions recorded by this repository. Separate
+sibling clones are not used by Compose.
 
 ## DNS Setup
 
@@ -74,23 +83,85 @@ NEXTAUTH_URL=https://agent-communication.online
 ## Deployment
 
 ```bash
-cd agent-collaboration-deploy
+# Run from the deployment repository root.
+git submodule update --init --recursive
+docker compose config --quiet
 docker compose up --build -d
 ```
 
 ## Update Deployment
 
-When submodule repos have new commits, run on the server:
+After this repository pins a new platform or web release, run from its root on
+the server with a clean source checkout:
 
 ```bash
-git pull --recurse-submodules
+git pull --ff-only
+git submodule sync --recursive
+git submodule update --init --recursive
+docker compose config --quiet
 docker compose up --build -d
 ```
+
+Use the recorded submodule commits; `git submodule update --remote` would select
+different code from the deployed release.
 
 > **Prisma Schema changes** (web submodule updated the DB schema), additionally run:
 > ```bash
 > docker compose exec web npx prisma migrate deploy
 > ```
+
+## Hermes connection
+
+Compose runs the cloud platform, web and nginx. Run the helper and Hermes Gateway
+on the same machine, using the current connector from
+[`agent-comm-platform/agent-comm/connectors/hermes-platform`](agent-comm-platform/agent-comm/connectors/hermes-platform/README.md).
+The deployment repository's root `connectors/` implementations and installation
+CLI are retired. Use the SDK directory installation below, including when
+upgrading an existing deployment.
+
+On the Hermes machine, initialize this repository recursively as above. With
+Go 1.25.7 or newer, build the helper from its pinned SDK source:
+
+```bash
+# From the deployment repository root on the Hermes machine.
+DEPLOY_DIR="$(pwd)"
+mkdir -p "$DEPLOY_DIR/build"
+(
+  cd "$DEPLOY_DIR/agent-comm-platform/agent-comm"
+  go build -o "$DEPLOY_DIR/build/agent-comm-helper" ./cmd/helper
+)
+"$DEPLOY_DIR/build/agent-comm-helper" init /absolute/path/to/hermes-agent-keys
+"$DEPLOY_DIR/build/agent-comm-helper" daemon /absolute/path/to/hermes-agent-keys https://agent-communication.online 45042
+```
+
+The daemon stays in the foreground; use the SDK's
+[service instructions](agent-comm-platform/agent-comm/README.md)
+for persistent operation. Keep the existing identity directory and `mailbox.db`
+when upgrading. Each helper identity needs its own data directory and local port.
+Set the service's `ExecStart` or `ProgramArguments` to the absolute helper path
+built above and the same existing identity directory; adjust the SDK examples'
+paths to match this installation.
+
+In another terminal, use the **same Python 3.11+ environment as Hermes Gateway**:
+
+```bash
+python -m pip install /absolute/path/to/agent-collaboration-deploy/agent-comm-platform/agent-comm/connectors/hermes-platform
+python -c "from hermes_constants import get_hermes_home; print(get_hermes_home())"
+curl --fail http://127.0.0.1:45042/info
+```
+
+Follow the [SDK connector instructions](agent-comm-platform/agent-comm/connectors/hermes-platform/README.md)
+to enable `plugins.enabled: [agent_comm]` and merge
+`platforms.agent_comm.extra` into the actual Hermes profile. Set its
+`platform_url` to **`http://127.0.0.1:45042`**, its `urn` to the helper's identity
+from `/info`, and `allow_from` to the explicitly allowed peer URNs. The cloud
+HTTPS address belongs in the helper's `daemon` command; the connector connects
+to the loopback helper API. It does not use the platform admin token.
+
+Restart Gateway using its normal service manager and confirm an established SSE
+connection. Preserve the connector receipts database, and use one active
+connector consumer per helper inbox. See the [migration notes](connectors/README.md)
+for removing a duplicate old plugin installation without losing identity or state.
 
 ## SSL Auto-Renewal
 
