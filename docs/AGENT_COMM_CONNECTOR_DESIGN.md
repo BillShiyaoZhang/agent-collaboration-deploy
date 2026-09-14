@@ -1,49 +1,19 @@
-# Agent Comm connector architecture and migration
+# Agent Comm 适配与安装来源
 
-The current connector source lives in the SDK submodule at
-`agent-comm-platform/agent-comm/connectors/`. This document replaces the earlier
-design draft, whose cloud-facing connectors, envelope format and installation
-CLI predated authenticated durable messaging.
+更新：2026-09-14。通用协作内核位于 SDK 的 `python/agent_comm_runtime/`；Hermes 插件位于 SDK 的 `connectors/hermes-platform/`。根部署仓库的旧 connector、安装 CLI 与旧联调脚本已移除。
 
-## Current message path
-
-```text
-Hermes Gateway + SDK Hermes connector
-    ↕ loopback HTTP/SSE, plaintext, stable message IDs
-agent-comm-helper + persistent inbox/outbox
-    ↕ authenticated encrypted transport
-agent-comm-platform (deployed by this repository's root Compose file)
+```mermaid
+flowchart LR
+    H["用户宿主"] <--> C["宿主 / 记忆 / 交互适配器"]
+    C <--> R["通用 runtime + 本地状态"]
+    R <--> HP["本机 Go helper"]
+    HP <-->|"HTTPS"| P["Registry / MQ"]
 ```
 
-The helper owns identity keys, signing, encryption and transport. The Hermes
-connector uses the helper's durable mailbox API and the real Hermes Gateway
-adapter lifecycle. It stores completion receipts before acknowledging successful
-processing, so a completed message replay only retries the local ACK. Processing
-is at least once across crashes; application side effects still need their own
-idempotency keys. A helper-accepted outbound message is not proof of peer
-execution.
+从源码接入时，先安装 SDK 的 `python/`，再在同一宿主 Python 环境安装 `connectors/hermes-platform/`。helper 云端地址用于 daemon 参数；插件的 `platform_url` 只能是本机 loopback helper。
 
-## Supported installation
+升级需保留密钥、mailbox、receipts、collaboration 和 remote 配对数据库。停用真实 profile 中同名的旧插件副本后，按正常方式重启 Gateway；一个 helper 只能有一个活跃的 connector/standalone 消费者。
 
-1. Follow the [deployment README](../README.md#prerequisites) to recursively
-   initialize the pinned platform, web and nested SDK submodules.
-2. On the Hermes machine, build and run the helper from that SDK. Pass the cloud
-   HTTPS address to `agent-comm-helper daemon` and retain the identity directory
-   and mailbox database during upgrades.
-3. Install the [SDK Hermes connector](../agent-comm-platform/agent-comm/connectors/hermes-platform/README.md)
-   into the Python environment used by Gateway. Follow that README to discover
-   the actual Hermes profile, enable the plugin and set explicit allowed peers.
-4. Set `platforms.agent_comm.extra.platform_url` to the local helper, normally
-   `http://127.0.0.1:45042`. This field is not the cloud platform address.
-5. Restart Gateway and verify an established SSE connection and a reply through
-   the helper. Retain receipt storage and one active consumer per helper inbox.
+当前 Hermes 插件提供实际宿主会话、原生确认与受配对约束的远程会话。其它宿主使用四类 [扩展接口](ARCHITECTURE_AND_EXTENSION_PORTS.md) 接入；现有 SDK OpenClaw 基础 connector 不因此自动具备新的个人协作能力。
 
-The deployment repository's root connectors and old installation CLI are
-retired. They must not download helpers, write identities or modify Hermes
-configuration. See [connector migration](../connectors/README.md). Install the
-SDK Hermes connector directory directly; the old generic CLI is not the current
-Hermes setup procedure.
-
-OpenClaw also uses its [SDK connector](../agent-comm-platform/agent-comm/connectors/openclaw-channel/README.md).
-Its lifecycle and host integration differ from Hermes; follow that connector's
-contract and validation notes.
+参见 [runtime README](../agent-comm-platform/agent-comm/python/README.md) 与 [Hermes README](../agent-comm-platform/agent-comm/connectors/hermes-platform/README.md)。

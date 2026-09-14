@@ -8,6 +8,10 @@ data/
 .next/
 dist/
 build/
+downloads/
+acme-challenge/
+output/
+tmp/
 
 # OS files
 .DS_Store

@@ -4,9 +4,22 @@ Unified docker-compose setup for agent-comm-platform and agent-collaboration-web
 
 ## Architecture
 
-- **nginx**: Reverse proxy on port 80/443 with Let's Encrypt SSL, routes `/` → platform (landing page), `/api/` and `/admin/` → platform, all other paths → web
+- **nginx**: Reverse proxy on port 80/443 with Let's Encrypt SSL, routes `/`, `/healthz`, `/api/v1/`, `/admin`, and `/docs` → platform; other paths, including `/api/auth/`, → web
 - **web**: Next.js frontend on internal port 3000
 - **platform**: Go backend on internal port 8080, exposes libp2p on port 45041
+
+See [product boundaries and extension ports](docs/ARCHITECTURE_AND_EXTENSION_PORTS.md)
+and [architecture diagrams](docs/PROJECT_ARCHITECTURE_DIAGRAMS.md).
+The Web is a remote agent workbench; contacts, collaboration state and conversation
+history belong to the agent. The standalone Python runtime supports host, memory,
+interaction and transport adapters; Hermes is the first integrated host.
+
+The 2026-09-14 early-access release is live. Start from the
+[invitation and installation packages](https://agent-communication.online/downloads/agent-comm-early-access-invitation.pdf)
+or the [release record](docs/EARLY_ACCESS_RELEASE_2026-09-14.md).
+The initial deployment was built from a verified workspace snapshot. This
+repository pins the corresponding SDK, platform and Web commits through its
+nested submodules; the published source ZIP preserves the original release snapshot.
 
 ## Prerequisites
 
@@ -105,10 +118,10 @@ docker compose up --build -d
 Use the recorded submodule commits; `git submodule update --remote` would select
 different code from the deployed release.
 
-> **Prisma Schema changes** (web submodule updated the DB schema), additionally run:
-> ```bash
-> docker compose exec web npx prisma migrate deploy
-> ```
+The Web entrypoint applies `prisma/remote-console.sql` idempotently. This additive
+migration preserves legacy tables and rows while adding the remote request cache
+and per-user connection uniqueness. Back up the database before upgrades; the
+entrypoint does not run `db push --accept-data-loss`.
 
 ## Hermes connection
 
@@ -145,7 +158,7 @@ paths to match this installation.
 In another terminal, use the **same Python 3.11+ environment as Hermes Gateway**:
 
 ```bash
-python -m pip install /absolute/path/to/agent-collaboration-deploy/agent-comm-platform/agent-comm/connectors/hermes-platform
+python -m pip install /absolute/path/to/agent-collaboration-deploy/agent-comm-platform/agent-comm/python /absolute/path/to/agent-collaboration-deploy/agent-comm-platform/agent-comm/connectors/hermes-platform
 python -c "from hermes_constants import get_hermes_home; print(get_hermes_home())"
 curl --fail http://127.0.0.1:45042/info
 ```
@@ -160,26 +173,35 @@ to the loopback helper API. It does not use the platform admin token.
 
 Restart Gateway using its normal service manager and confirm an established SSE
 connection. Preserve the connector receipts database, and use one active
-connector consumer per helper inbox. See the [migration notes](connectors/README.md)
+connector consumer per helper inbox. See the [migration notes](docs/AGENT_COMM_CONNECTOR_DESIGN.md)
 for removing a duplicate old plugin installation without losing identity or state.
 
 ## SSL Auto-Renewal
 
-Let's Encrypt certs expire every 90 days. Add a cron to renew automatically:
+The existing server uses Certbot's `webroot` renewal with the Compose mount
+`./acme-challenge:/var/www/certbot:ro`. HTTP requests under
+`/.well-known/acme-challenge/` are served by nginx without a redirect. Renewal
+does not need to stop the workbench.
 
 ```bash
-crontab -e
+sudo systemctl enable --now certbot-renew.timer
+sudo systemctl status certbot-renew.timer
 ```
 
-Add this line:
+After a successful renewal, the root-owned deploy hook at
+`/etc/letsencrypt/renewal-hooks/deploy/agent-comm-nginx.sh` validates and reloads
+nginx. New servers need to install that hook and use their distribution's
+Certbot timer name. Its commands are:
 
 ```
-0 3 * * * certbot renew --pre-hook "docker compose -f /root/agent-collaboration-deploy/docker-compose.yml stop nginx" --post-hook "docker compose -f /root/agent-collaboration-deploy/docker-compose.yml start nginx"
+docker exec agent-nginx nginx -t
+docker exec agent-nginx nginx -s reload
 ```
 
 ## Access
 
-- Web UI: https://agent-communication.online/
+- Web UI: https://agent-communication.online/dashboard
+- Registration: https://agent-communication.online/register
 - Admin Console: https://agent-communication.online/admin/
 - Platform API: https://agent-communication.online/api/v1/
 - API Docs: https://agent-communication.online/docs/
@@ -197,3 +219,19 @@ Add this line:
 ```bash
 docker compose logs -f
 ```
+
+## Personal Agent Collaboration
+
+The independent SDK Python runtime owns local contacts, scoped mandates,
+confirmations, controlled sends and persistent state. Hermes provides the
+first host/interaction adapter. See the [runtime developer guide](agent-comm-platform/agent-comm/python/README.md)
+and [implementation handoff](docs/PERSONAL_AGENT_COLLABORATION_IMPLEMENTATION.md).
+
+The remote Web workbench reads agent-owned state through locally paired,
+method-scoped encrypted RPC. Enable `remote_enabled` in the actual Hermes profile
+and explicitly pair the console URN using the runtime CLI. A Web connection record
+does not grant access. Native collaboration confirmations remain in Hermes.
+
+The browser simulation, independent Web business data APIs, root legacy
+connectors and old installation CLI have been removed. Existing private data is
+preserved during migration; no production database should be reset to adopt this architecture.
