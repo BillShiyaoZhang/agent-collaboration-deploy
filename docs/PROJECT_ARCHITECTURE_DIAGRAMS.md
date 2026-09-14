@@ -1,6 +1,6 @@
 # 当前项目架构与流程图
 
-更新：2026-09-14。本轮根据用户确定的边界重构：Web 只连接 agent，协作数据属于 agent 侧；通用 runtime 支持不同宿主、记忆与交互渠道。接口细节见 [扩展接口设计](ARCHITECTURE_AND_EXTENSION_PORTS.md)。实际发布版本与验证证据以接入交接为准。
+更新：2026-09-14。Web 根据用户要求持久保存账户的连接、联系人和消息，并主动同步；agent 侧提供业务事实与执行授权，通用 runtime 支持不同宿主、记忆与交互渠道。接口细节见 [扩展接口设计](ARCHITECTURE_AND_EXTENSION_PORTS.md)。主动同步改动的验证与上线状态以实际发布记录为准。
 
 ## 1. 产品与数据归属
 
@@ -24,10 +24,16 @@ flowchart TB
     end
     subgraph CLOUD["云端"]
         W["Web 远程工作台"]
-        WD[("账户、连接、控制台凭据<br/>有限期 RPC 密文缓存")]
+        WD[("账户、连接、控制台凭据<br/>加密的联系人、消息与已知会话副本")]
+        WC[("独立的有限期 RPC 密文缓存")]
+        WS["常驻 Node 同步 worker"]
         P["Registry / MQ"]
         W <--> WD
+        W <--> WC
         W <-->|"认证加密 RPC"| P
+        WS <--> WD
+        WS <--> WC
+        WS <-->|"周期只读 RPC"| P
     end
     U <-->|"原生交互"| H
     U <--> W
@@ -35,7 +41,7 @@ flowchart TB
     P <--> OTHER["对方 Agent 的兼容客户端"]
 ```
 
-Web 不维护第二套联系人、聊天历史、审批或交易。控制台添加连接记录不授予访问权；agent 侧配对才决定哪个控制台能调用哪些方法、能访问哪个主体、到何时过期。
+Web 的账户副本保存已认证返回的联系人、消息、事项和会话，内容使用 AES-GCM 静态加密，供跨页面、刷新和换设备恢复。控制台添加连接记录不授予访问权；agent 侧配对决定哪个控制台能调用哪些方法、能访问哪个主体、到何时过期。
 
 ## 2. 可替换的代码端口
 
@@ -72,6 +78,31 @@ sequenceDiagram
 ```
 
 Web 的控制台身份兼容既有 URN，不要求用户重新生成身份。未配对、错主体、越权方法、重放冲突和到期请求不能获得数据。远程 conversation.send 提交到真实 Hermes 独立会话，最终答复从 agent 侧 conversation.get 查询；远程审批暂不开放。
+
+### 账户恢复与后台同步
+
+```mermaid
+sequenceDiagram
+    participant N as Next.js Node 进程
+    participant J as 后台同步 worker
+    participant D as 账户加密副本
+    participant A as Agent（经认证 MQ）
+    participant B as 用户浏览器
+    N->>J: instrumentation 启动常驻任务
+    B->>D: 通过登录 API 读取已保存数据
+    D-->>B: 联系人、消息、已知及当前会话、最后同步时间
+    loop 无需点击，按租约与退避调度
+        J->>A: capabilities
+        A-->>J: 当前配对范围和期限
+        J->>A: 已授权的 state 或独立读取；当前和待完成会话 get
+        A-->>J: 关联到请求的认证响应
+        J->>D: 更新联系人视图，按 ID 保存消息和回合
+    end
+    B->>D: 后台刷新账户视图
+    D-->>B: 新数据或离线状态及最后同步数据
+```
+
+后台只发读取 RPC，不定时发送对话、不代替审批。结果不确定的发送保留原请求供恢复和核实，不以新 ID 自动重发。收件箱和会话读取只有最近 100 项，保存时不会因新窗口缺项而删掉旧消息；现有协议没有 `conversation.list`，未知旧会话不能自动发现，也不保证窗口之外的完整历史回补。
 
 ## 4. 本地协作与授权
 
@@ -159,6 +190,6 @@ flowchart TD
 
 配对撤销阻止后续 RPC 与未执行的远程任务；已开始的宿主工具和已披露的信息不能回滚。协作对端收件仍不自动唤醒私人 LLM；有范围的远程主人会话请求是另一条显式入口。
 
-数据库分层保留：协作 Store、远程配对/会话库、connector receipts、helper mailbox/密钥、云 Registry/MQ。Web 的有限期投递缓存不能取代任何 agent 侧真实状态。
+数据库分层保留：协作 Store、远程配对/会话库、connector receipts、helper mailbox/密钥、云 Registry/MQ，以及 Web 的账户持久副本和独立投递缓存。Web 的 10 分钟 RPC 缓存到期不删除已同步历史。离线时仍可查看最后同步的数据及时间，不据此声称当前在线；删除连接级联删除该账户的相关副本，不改变 agent 本地记录。
 
 旧浏览器 demo、Web 独立业务 API/页面、根目录退役 connector 和旧安装脚本已移除。历史产品探索保留为决策记录，不再作为当前安装说明。
