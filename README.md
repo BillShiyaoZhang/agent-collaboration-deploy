@@ -28,9 +28,11 @@
 
 ## Architecture
 
-- **nginx**: Reverse proxy on port 80/443 with Let's Encrypt SSL, routes `/`, `/healthz`, `/api/v1/`, `/admin`, and `/docs` → platform; other paths, including `/api/auth/`, → web
+- **nginx**: Serves the static introduction at `/` from `agent-collaboration-web/site`; routes `/healthz`, `/api/v1/`, `/admin`, and `/docs` → platform; other paths, including `/api/auth/`, → web. HTTPS uses Let's Encrypt.
 - **web**: Next.js frontend on internal port 3000
 - **platform**: Go backend on internal port 8080, exposes libp2p on port 45041
+
+The public introduction lives in [Web's static site directory](agent-collaboration-web/site/README.md). It is not embedded in the Go server or built into Next.js. After this directory mount is installed, content-only homepage updates require synchronizing the static files; neither application needs a rebuild or restart.
 
 See [product boundaries and extension ports](docs/ARCHITECTURE_AND_EXTENSION_PORTS.md)
 and [architecture diagrams](docs/PROJECT_ARCHITECTURE_DIAGRAMS.md).
