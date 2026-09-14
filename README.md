@@ -14,6 +14,8 @@ The Web is a remote agent workbench; agent data remains authoritative, while an
 encrypted account copy restores contacts, messages and known conversations and
 synchronizes them in the background. The standalone Python runtime supports host, memory,
 interaction and transport adapters; Hermes is the first integrated host.
+Cross-platform clients share the [client contract package](agent-collaboration-web/packages/client-contract/README.md),
+including the JavaScript client, synchronization policy, JSON Schema and native-client fixtures.
 
 The 2026-09-14 early-access release is live. Start from the
 [invitation and installation packages](https://agent-communication.online/downloads/agent-comm-early-access-invitation.pdf)

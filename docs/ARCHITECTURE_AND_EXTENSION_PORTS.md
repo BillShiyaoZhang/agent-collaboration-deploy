@@ -119,6 +119,12 @@ agent 离线时保留最后同步数据并标出时间和连接状态；旧数�
 
 现有 SDK 没有 `conversation.list`，只能恢复 Web 已记录 ID 的会话。`conversation.get` 和 `inbox.list` 各返回最近 100 项，没有历史分页；本轮不修改 SDK，不承诺发现未知旧会话或完整回补远端窗口之外的历史。服务端会持续保留此后实际同步到的消息和回合。
 
+## 多端客户端共享模块
+
+Web 中的协议类型、请求关联验证、稳定请求 ID 与轮询、快照/回合合并、能力与配对检查、只读同步策略已拆入独立 npm workspace [`@agent-comm/client-contract`](../agent-collaboration-web/packages/client-contract/README.md)。Web UI、API 和同步 worker 使用同一份实现；模块不依赖 React、Next.js、Prisma 或平台密钥，可单独打包供其他 JavaScript 客户端使用。
+
+Swift、Kotlin 等客户端通过同目录的 JSON Schema 和 `fixtures/` 保持 HTTP 字段、时间单位、分页和不确定发送处理一致。客户端可以复用 Web 的账户持久副本与现有 NextAuth cookie 会话；原生客户端的变更请求同样需要匹配服务端配置的 `Origin`。详细的认证流程、接口表和跨语言 fixture 用法见模块 README。底层签名加密、认证存储及各系统的会话持久化仍由对应适配层承担。
+
 ## 适配者接入步骤与验收
 
 1. 独立安装 runtime，阅读其 README 与参考适配器，运行合约测试。
