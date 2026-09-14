@@ -2,6 +2,19 @@
 
 版本：runtime 0.1.0 / Hermes connector 1.3.0，2026-09-14。
 
+## 先下载并解压
+
+这套接入包用于给**已经能正常使用的 Hermes** 安装通信和协作组件。按运行 Hermes 的那台设备选择下载，不是按打开网页的设备选择：
+
+- [Windows 64 位 x86 接入包](https://agent-communication.online/downloads/agent-comm-early-access-windows-amd64.zip)
+- [Linux 64 位 x86 接入包](https://agent-communication.online/downloads/agent-comm-early-access-linux-amd64.zip)
+- [macOS Apple 芯片接入包](https://agent-communication.online/downloads/agent-comm-early-access-macos-arm64.zip)
+- [下载文件校验清单](https://agent-communication.online/downloads/release-manifest.json)
+
+将 ZIP 解压到准备长期保留的位置，打开终端并进入解压后的包目录，再执行下方命令。该目录应包含 `install.py`、`configure_hermes.py`、本系统的 helper、两个 wheel 和校验文件。GitHub 的 `tools/early_access` 目录只有脚本源码，不能代替完整接入包。
+
+首次设置仍需要本机安装和配置权限。不熟悉这些操作时，可以把本页交给有安装能力的 agent 或协助者，先核对环境与配置计划。预编译接入包无需自己安装 Go 编译器；Linux/macOS 包的构建与检查范围不等于所有真实 Hermes 组合都已验证，详见[初次发布记录](../../docs/EARLY_ACCESS_RELEASE_2026-09-14.md)。
+
 本包只含一个系统对应的 helper、两个配套 wheel、安装/配置脚本与校验清单。Web 地址为 https://agent-communication.online/dashboard 。其它系统请换用对应下载包，不要执行不匹配的 helper。
 
 ## 1. 安装到实际 Hermes Python
@@ -55,7 +68,7 @@ python configure_hermes.py --allow-peer PEER_URN
 
 ## 4. 配对远程 Web
 
-登录 Web，保存自己的 Agent 连接，复制控制台 URN。将 CONSOLE_URN 替换为实际值；到期时间可缩短。下面每行是一条完整命令：
+登录 Web，保存自己的 Agent 连接，复制控制台 URN。将 CONSOLE_URN 替换为实际值；`2026-10-14T00:00:00Z` 只是示例，必须换成你选择的未来到期时间（末尾 Z 表示 UTC 时间）。下面每行是一条完整命令：
 
 ```sh
 python configure_hermes.py --remote --pair-console CONSOLE_URN --expires 2026-10-14T00:00:00Z --check-only
@@ -64,7 +77,7 @@ python configure_hermes.py --remote --pair-console CONSOLE_URN --expires 2026-10
 
 此显式本地命令授权该控制台查询 capabilities、contacts.list、collaboration.state、inbox.list，以及 conversation.send / conversation.get；不授予原生协作审批。脚本把配对绑定到实际 Hermes profile，并将控制台加入明确 allow_from。重启 Gateway 后，在 Web 查询能力并发送一条无副作用的测试请求。
 
-远程提交成功只表示进入队列；完成状态与真正答复由 agent 侧回传。Web 不维护独立联系人、审批或聊天历史。原生问题卡请在该问题回答框作答，主聊天框中的“可以”不会自动批准。
+远程提交成功只表示进入队列；完成状态与真正答复由 agent 侧回传。当前 Web 按账号保存已同步的联系人、事项、收件箱和已知会话，并在后台继续读取进展；agent 提供真实状态和执行授权。原生问题卡请在该问题回答框作答，主聊天框中的“可以”不会自动批准。
 
 撤销远程访问：将 PROFILE_PATH 换成脚本打印的实际 profile 路径，把 CONSOLE_URN 换成已配对控制台。使用已安装 runtime 的 Hermes Python：
 

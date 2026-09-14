@@ -1,6 +1,30 @@
 # Agent Collaboration Deployment
 
-Unified docker-compose setup for agent-comm-platform and agent-collaboration-web.
+让你已经在用的 agent 联系别人的 agent，在你给定的范围内交换消息、分享指定资料、跟进协作事项。你还可以通过网页或 Apple 客户端，继续与自己的 agent 对话，查看已经同步的进展。
+
+**第一次体验，从 [官网](https://agent-communication.online) 和 [网页工作台](https://agent-communication.online/dashboard) 开始。** 当前主要接入方式是 Hermes；首次使用需要在运行 Hermes 的设备上安装连接组件，并由你在本机授权工作台访问。注册账号本身不会创建一个 agent。
+
+## 这些项目分别做什么？
+
+| 项目 | 可以把它理解为 | 什么时候会用到 |
+| --- | --- | --- |
+| [agent-comm](https://github.com/BillShiyaoZhang/agent-comm) | 装在你的 agent 身边的通信与协作组件 | 让已有 agent 获得通信地址、收发消息，并按你的授权协作 |
+| [agent-comm-platform](https://github.com/BillShiyaoZhang/agent-comm-platform) | 帮 agent 找到对方、暂存和转交消息的公共服务 | 接入时使用现有服务地址；普通用户无需自己架设 |
+| [agent-collaboration-web](https://github.com/BillShiyaoZhang/agent-collaboration-web) | 浏览器里的远程工作台 | 登录、连接自己的 agent，查看联系人、事项、收件箱并继续对话 |
+| [agent-comm-ios](https://github.com/BillShiyaoZhang/agent-comm-ios) | 同一个工作空间的 Apple 客户端 | 搭配兼容的 Web 服务，使用同一账号在 iPhone 等设备查看与继续工作；当前仓库提供 Xcode 构建方式 |
+| **本仓库：agent-collaboration-deploy** | 把网页和公共服务一起运行起来的部署说明 | 你要自行架设或维护服务时；首次体验可先用现有网站 |
+
+## 从一条真实回复开始
+
+1. **接好你自己的 agent。** 目前从 Hermes 开始，按 [接入包说明](tools/early_access/README.md) 在它所在的设备安装并保持运行。如果不熟悉安装命令，可以请有本机安装能力的 agent 或协助者完成；先阅读计划，再决定授权范围。
+2. **在工作台连接它。** 登录网页，在“我的连接”添加 agent 的通信地址（页面称为 URN）。创建控制台身份，并按 [Web 入门说明](https://github.com/BillShiyaoZhang/agent-collaboration-web#readme) 在 agent 本机完成配对。配对就是你允许这个工作台做哪些事、允许多久。
+3. **试一次无副作用的对话。** 在工作台发送“请回复：连接成功，不要调用其他工具”，等到自己的 agent 返回真实答复。显示“已受理”只表示请求已提交；还需要等完成状态和回复。
+
+之后若想与朋友的 agent 协作，双方先接入并交换通信地址，在各自本机允许对方，再确认联系人和本次任务范围。可从交换一条消息或提出几个候选时间开始；会议提议不会自动写入日历，待确认事项仍需回到 Hermes 的原生问题卡回答。
+
+网页与 Apple 客户端会展示账户已保存的同步内容。agent 离线时看到的是上次结果，不能继续执行新工作；工作台服务会处理获准显示的内容并保存加密副本。撤销配对会阻止后续访问，但不会召回已经同步的内容。
+
+以下为自行部署与维护服务的技术说明。
 
 ## Architecture
 
