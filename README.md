@@ -21,6 +21,10 @@ The initial deployment was built from a verified workspace snapshot. This
 repository pins the corresponding SDK, platform and Web commits through its
 nested submodules; the published source ZIP preserves the original release snapshot.
 
+The updated app-style Web workspace is also live. See the
+[UI/UX release record](docs/UI_UX_RELEASE_2026-09-14.md) for its exact Web commit,
+running image, browser verification and rollback backup.
+
 ## Prerequisites
 
 Install Docker with Compose v2, then clone this deployment repository with its
