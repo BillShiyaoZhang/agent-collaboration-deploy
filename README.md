@@ -10,8 +10,9 @@ Unified docker-compose setup for agent-comm-platform and agent-collaboration-web
 
 See [product boundaries and extension ports](docs/ARCHITECTURE_AND_EXTENSION_PORTS.md)
 and [architecture diagrams](docs/PROJECT_ARCHITECTURE_DIAGRAMS.md).
-The Web is a remote agent workbench; contacts, collaboration state and conversation
-history belong to the agent. The standalone Python runtime supports host, memory,
+The Web is a remote agent workbench; agent data remains authoritative, while an
+encrypted account copy restores contacts, messages and known conversations and
+synchronizes them in the background. The standalone Python runtime supports host, memory,
 interaction and transport adapters; Hermes is the first integrated host.
 
 The 2026-09-14 early-access release is live. Start from the
@@ -24,6 +25,10 @@ nested submodules; the published source ZIP preserves the original release snaps
 The updated app-style Web workspace is also live. See the
 [UI/UX release record](docs/UI_UX_RELEASE_2026-09-14.md) for its exact Web commit,
 running image, browser verification and rollback backup.
+
+Account persistence and proactive synchronization are live as well. See the
+[workspace synchronization release record](docs/WORKSPACE_SYNC_RELEASE_2026-09-14.md)
+for verification, the deployed version and historical-data limits.
 
 ## Prerequisites
 
