@@ -2,6 +2,8 @@
 
 维护基准：2026-09-15 的固定源码。Web 已实现账户内容持久化与主动同步；agent 提供业务事实和执行授权。职责和接口说明见 [当前架构](OVERVIEW.md)，各次运行证据见 [发布索引](../releases/README.md)。
 
+需要逐层理解实际代码，可阅读 [技术实现详解：13 张 Mermaid 图](TECHNICAL_IMPLEMENTATION_WALKTHROUGH.md)。该文核对 2026-09-15 部署锁定源码，展开加密、RPC、确认租约、消息 ACK、同步 worker、数据模型与故障恢复。
+
 ## 1. 产品与数据归属
 
 ```mermaid

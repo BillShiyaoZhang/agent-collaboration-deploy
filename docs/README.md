@@ -3,7 +3,7 @@
 | 要完成的工作 | 入口 |
 | --- | --- |
 | 了解产品、首次连接已有 agent | [项目 README](../README.md) · [接入包说明](../tools/release/early_access/README.md) |
-| 了解组件职责、协议、同步与授权 | [当前架构](architecture/OVERVIEW.md) · [流程图](architecture/FLOWS.md) · [产品决策](architecture/DECISIONS.md) |
+| 了解组件职责、协议、同步与授权 | [当前架构](architecture/OVERVIEW.md) · [流程图](architecture/FLOWS.md) · [技术实现详解](architecture/TECHNICAL_IMPLEMENTATION_WALKTHROUGH.md) · [产品决策](architecture/DECISIONS.md) |
 | 自行部署、升级、维护证书 | [部署指南](operations/DEPLOYMENT.md) |
 | 从源码接入或升级 Hermes | [Hermes 指南](operations/HERMES.md) |
 | 查部署版本、验收和回滚证据 | [发布索引](releases/README.md) · [验证索引](verification/README.md) |
