@@ -1,6 +1,6 @@
 # 人—Agent—Agent—人的协作与授权设计 v1
 
-状态：**总体设计已获用户认可，M1/N1 首版已落实到本地源码**。日期：2026-09-15。当前能力与限制见[实现说明](../architecture/COLLABORATION_AND_ATTENTION.md)，验证及部署范围见[验收记录](../verification/COLLABORATION_ATTENTION_2026-09-15.md)。本文的“当前基础”保留设计时基准；M2/M3 与后续探索仍为规划，不代表全部实现或上线。提醒与授权待办需求见[补充设计](ATTENTION_AND_NOTIFICATIONS_V1.md)。
+状态：**总体设计已获用户认可，M1/N1 及 M2 的有限确定性后台推进已落实到源码**。日期：2026-09-15。当前能力与限制见[M2 与通知闭环](../architecture/COLLABORATION_AND_ATTENTION.md)，安装、部署和实机范围见[本轮验收记录](../verification/ATTENTION_COMPLETION_2026-09-15.md)。本文的“当前基础”、分期和图保留设计时基准；开放式模型协商、外部执行、授权学习及声誉等后续探索不代表已实现或上线。提醒需求见[补充设计](ATTENTION_AND_NOTIFICATIONS_V1.md)，M1/N1 历史证据见[首版记录](../verification/COLLABORATION_ATTENTION_2026-09-15.md)。
 
 ## 1. 结论与项目适配
 

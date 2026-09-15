@@ -1,6 +1,6 @@
 # 面向用户的提醒与授权待办设计 v1
 
-状态：2026-09-15 的补充设计；N1 首版已落实到本地源码，承接已获用户认可的[双边协作设计](HUMAN_AGENT_COLLABORATION_V1.md)。本文保留设计时缺口和分期；当前能力及限制见[实现说明](../architecture/COLLABORATION_AND_ATTENTION.md)，实际验证范围见[验收记录](../verification/COLLABORATION_ATTENTION_2026-09-15.md)。闭页 Push 等后续阶段尚未实现。
+状态：2026-09-15 的补充设计；持久提醒、本人详情、原生处理会话恢复/创建、单次处理请求和闭页 Web Push 已落实到源码，承接[双边协作设计](HUMAN_AGENT_COLLABORATION_V1.md)。本文的缺口、分期和图保留设计时基准，不作为当前未实现清单；当前行为与平台限制见[M2 与通知闭环](../architecture/COLLABORATION_AND_ATTENTION.md)，实际安装、部署和显示结果见[本轮验收记录](../verification/ATTENTION_COMPLETION_2026-09-15.md)。远程批准、开放式模型协商等能力仍未包含。
 
 ## 1. 结论：应当把提醒纳入第一阶段
 

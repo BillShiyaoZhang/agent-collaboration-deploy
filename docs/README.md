@@ -5,7 +5,7 @@
 | 了解产品、首次连接已有 agent | [项目 README](../README.md) · [接入包说明](../tools/release/early_access/README.md) |
 | 了解组件职责、协议、同步与授权 | [当前架构](architecture/OVERVIEW.md) · [流程图](architecture/FLOWS.md) · [技术实现详解](architecture/TECHNICAL_IMPLEMENTATION_WALKTHROUGH.md) · [产品决策](architecture/DECISIONS.md) |
 | 评审双边协作、授权与后续实现 | [设计与规划](planning/README.md) · [人—Agent—Agent—人的协作与授权设计 v1](planning/HUMAN_AGENT_COLLABORATION_V1.md) |
-| 使用双边协作与用户提醒首版 | [M1/N1 实现说明](architecture/COLLABORATION_AND_ATTENTION.md) · [验证结果](verification/COLLABORATION_ATTENTION_2026-09-15.md) |
+| 使用双边协作、后台推进与用户提醒 | [M2 与通知闭环](architecture/COLLABORATION_AND_ATTENTION.md) · [本轮验收](verification/ATTENTION_COMPLETION_2026-09-15.md) |
 | 自行部署、升级、维护证书 | [部署指南](operations/DEPLOYMENT.md) |
 | 从源码接入或升级 Hermes | [Hermes 指南](operations/HERMES.md) |
 | 查部署版本、验收和回滚证据 | [发布索引](releases/README.md) · [验证索引](verification/README.md) |
