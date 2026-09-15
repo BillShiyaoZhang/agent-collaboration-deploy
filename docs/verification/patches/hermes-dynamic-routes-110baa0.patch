@@ -1,0 +1,27 @@
+--- a/src/app/routes.ts
++++ b/src/app/routes.ts
+@@ -91,9 +91,8 @@
+   path: string
+ }
+ 
+-export function contributedRoutes(): Array<{ key: string; path: string; title?: string; render: () => ReactNode }> {
+-  return registry
+-    .getArea(ROUTES_AREA)
++export function contributedRoutes(contributions = registry.getArea(ROUTES_AREA)): Array<{ key: string; path: string; title?: string; render: () => ReactNode }> {
++  return contributions
+     .map(c => ({
+       key: `${c.source ?? 'core'}:${c.id}`,
+       path: (c.data as RouteContribution | undefined)?.path ?? '',
+--- a/src/app/contrib/surfaces.tsx
++++ b/src/app/contrib/surfaces.tsx
+@@ -122,8 +122,8 @@
+   const activeGatewayProfile = useStore($activeGatewayProfile)
+   const gateway = useStore($gateway)
+   const gatewayState = useStore($gatewayState)
+-  useContributions(ROUTES_AREA)
+-  const routeContributions = contributedRoutes()
++  const contributions = useContributions(ROUTES_AREA)
++  const routeContributions = contributedRoutes(contributions)
+ 
+   const modelMenuContent = useMemo(
+     () =>
