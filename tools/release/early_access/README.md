@@ -75,7 +75,9 @@ python configure_hermes.py --remote --pair-console CONSOLE_URN --expires FUTURE_
 python configure_hermes.py --remote --pair-console CONSOLE_URN --expires FUTURE_UTC_EXPIRY
 ```
 
-此显式本地命令授权该控制台查询 capabilities、contacts.list、collaboration.state、inbox.list，以及 conversation.send / conversation.get；不授予原生协作审批。脚本把配对绑定到实际 Hermes profile，并将控制台加入明确 allow_from。重启 Gateway 后，在 Web 查询能力并发送一条无副作用的测试请求。
+此显式本地命令授权该控制台查询 capabilities、contacts.list、collaboration.state、inbox.list、attention.list，以及 conversation.send / conversation.get；不授予原生协作审批。脚本把配对绑定到实际 Hermes profile，并将控制台加入明确 allow_from。已有配对不会因代码升级自动增加 attention.list；需本人在本机查看更新后的配对计划并显式重新配对。重启 Gateway 后，在 Web 查询能力并发送一条无副作用的测试请求。
+
+新版源码的 Hermes 桌面提醒通过随 connector wheel 附带的 companion 插件提供。安装与启用步骤见 [Hermes connector 提醒说明](../../../agent-comm-platform/agent-comm/connectors/hermes-platform/README.md)。包内持久待办始终独立于系统通知显示；浏览器系统通知需要用户主动开启，页面关闭后的 Web Push 尚未实现。本文更新不代表上方公共下载包已发布此版本。
 
 可使用纯文字回显：“请原样回复‘蓝色纸船’，无需检查外部状态。它不代表任何系统状态、审批或操作结果。”同时检查请求完成状态和真实回复；测试词不是授权或业务完成凭据。
 

@@ -46,7 +46,7 @@ def verify_wheels(wheels, sources=SOURCES):
                 count += 1
             package = name.replace("-", "_")
             for path in (source / package).rglob("*"):
-                if path.is_file() and path.suffix in {".py", ".yaml", ".md"} and "__pycache__" not in path.parts:
+                if path.is_file() and path.suffix in {".py", ".yaml", ".md", ".js", ".json"} and "__pycache__" not in path.parts:
                     if path.relative_to(source).as_posix() not in archive.namelist():
                         raise ValueError(f"Missing packaged source: {path}")
     return count

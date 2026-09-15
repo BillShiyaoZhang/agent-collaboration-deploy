@@ -39,6 +39,8 @@ Web 中添加 agent 只是连接记录。真正的远程访问权由 agent 侧�
 
 ## 当前协作能力
 
+双边协议和用户提醒的首版已在源码中实现，详见[双边协作与用户提醒](COLLABORATION_AND_ATTENTION.md)：双方独立本地任务、同版约定、撤回与恢复，以及 Hermes/Web 的持久提醒入口。下表的五种业务权限继续作为授权检查基础。
+
 通用 runtime 的 [策略实现](../../agent-comm-platform/agent-comm/python/agent_comm_runtime/policy.py) 支持五种对外动作：
 
 | 动作 | 执行边界 |
@@ -68,7 +70,7 @@ Agent 侧 RemoteBridge 使用本地配对与持久请求记录：
 4. 从 agent 侧读取事实或提交真实会话工作；保存结果后通过 helper 回传。
 5. 返回消息被 helper 接受后再 ACK 原请求；故障重试保留原响应。
 
-当前方法为 `capabilities`、`contacts.list`、`collaboration.state`、`inbox.list`、以及 Hermes 实现的 `conversation.send` / `conversation.get`。独立只读 daemon 不宣称具备 Hermes 会话能力。`conversation.send` 返回 submitted 仅代表已提交，最终结果由 conversation.get 从 agent 侧读取。
+当前方法为 `capabilities`、`contacts.list`、`collaboration.state`、`inbox.list`、`attention.list`，以及 Hermes 实现的 `conversation.send` / `conversation.get`。`attention.list` 需要本机明确配对，旧配对不自动扩大。独立只读 daemon 不宣称具备 Hermes 会话能力。`conversation.send` 返回 submitted 仅代表已提交，最终结果由 conversation.get 从 agent 侧读取。
 
 远程审批当前不开放。Web 可以查看 agent 侧的待确认状态，原生审批仍回到已实现的用户交互渠道。后续渠道适配要补充身份验证、问题呈现、回答绑定、期限与撤销测试，才能声明支持。
 

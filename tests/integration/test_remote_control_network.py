@@ -45,7 +45,7 @@ api:
   rate_limit_rate: 0
 """, encoding="utf-8")
     processes, logs = [], []
-    bridge = store = None
+    bridge = store = peer_store = None
     # The production platform accepts environment overrides even with -config.
     # Keep this test's process paths/listeners in its fresh local sandbox.
     process_env = {key: value for key, value in os.environ.items() if not key.upper().startswith("PLATFORM_")}
@@ -140,6 +140,90 @@ api:
         assert roundtrip("contacts.list", fail_delivery=True)["result"] == contacts["result"]
         assert roundtrip("contacts.list", params={"unexpected": True})["error"]["code"] == "invalid_params"
         assert roundtrip("inbox.list")["error"]["code"] == "method_not_allowed"
+        assert roundtrip("attention.list")["error"]["code"] == "method_not_allowed"
+        bridge.pair(console["urn"], "network-test-owner", ["capabilities", "contacts.list", "attention.list", "collaboration.state"], iso(3600))
+        pending = store.prepare_contact("pending-contact", ["需要主人核对"], console["urn"], owner)
+        attention = roundtrip("attention.list", params={"after": 0, "limit": 100})["result"]
+        notice = next(item for item in attention["items"] if item.get("approval_id") == pending["approval_id"])
+        assert notice["state"] == "open" and "question" not in notice and "token" not in notice
+        assert roundtrip("attention.list", params={"owner": foreign_owner})["error"]["code"] == "invalid_params"
+        lease = store.begin_confirmation(pending["approval_id"], owner)
+        store.finish_confirmation(pending["approval_id"], lease["token"], owner, "拒绝")
+        updated = roundtrip("attention.list", params={"after": attention["cursor"]})["result"]
+        assert next(item for item in updated["items"] if item["attention_id"] == notice["attention_id"])["state"] == "resolved"
+
+        # Independent owners, independent local task IDs, real encrypted wire.
+        peer_store = Store(folder / "peer-collaboration.sqlite3", local_urn=console["urn"])
+        peer_owner = "network-peer-owner|native-session"
+
+        def native_confirm(database, prepared, principal):
+            if prepared.get("decision") == "ask":
+                lease = database.begin_confirmation(prepared["approval_id"], principal)
+                assert database.finish_confirmation(prepared["approval_id"], lease["token"], principal, "同意")["decision"] == "allow"
+
+        native_confirm(peer_store, peer_store.prepare_contact("agent-a", ["测试对象"], agent["urn"], peer_owner), peer_owner)
+        scope = {"purpose": "本机隔离双边约定测试", "topic": "协议验收",
+                 "capabilities": ["propose_meeting", "accept_meeting"], "recipient_ids": ["test-contact"],
+                 "participant_ids": ["self", "test-contact"], "resource_ids": [],
+                 "window_start": iso(3600), "window_end": iso(172800), "max_duration_minutes": 30,
+                 "max_candidates": 2, "max_actions": 20, "expires_at": iso(172800)}
+        native_confirm(store, store.prepare_task("local-a", scope, owner), owner)
+        peer_scope = {**scope, "recipient_ids": ["agent-a"], "participant_ids": ["self", "agent-a"]}
+        native_confirm(peer_store, peer_store.prepare_task("local-b", peer_scope, peer_owner), peer_owner)
+        event_number = 0
+
+        def send_event(database, kind, payload=None):
+            nonlocal event_number
+            event_number += 1
+            principal, task, transport = (owner, "local-a", incoming) if database is store else (peer_owner, "local-b", outgoing)
+            result = database.prepare_collaboration(task, "network-shared", "network-op-" + str(event_number), kind, payload or {}, principal)
+            native_confirm(database, result, principal)
+            assert database.dispatch(result["operation_id"], principal, transport)["status"] == "accepted"
+
+        def receive(database, transport):
+            messages = [m for m in transport.retrieve() if m.get("task_id") == "network-shared"]
+            for message in messages:
+                database.ingest_message(message)
+            if messages:
+                transport.ack([m["message_id"] for m in messages])
+            return messages
+
+        def advance():
+            for database, principal, transport in ((store, owner, incoming), (peer_store, peer_owner, outgoing)):
+                receive(database, transport)
+                for operation in database.collaborations(principal)["operations"]:
+                    if operation["status"] in {"ready", "sending"} and operation["decision"] == "allow":
+                        assert database.dispatch(operation["operation_id"], principal, transport)["status"] == "accepted"
+            return store.collaborations(owner)["collaborations"], peer_store.collaborations(peer_owner)["collaborations"]
+
+        send_event(store, "invite", {"peer_id": "test-contact"})
+        invitation = until(lambda: receive(peer_store, outgoing), "bilateral invitation")[0]
+        assert any(item["kind"] == "new_collaboration_request" and item["state"] == "open" for item in peer_store.attention(peer_owner)["items"])
+        send_event(peer_store, "join", {"message_id": invitation["message_id"]})
+        until(lambda: (advance()[0][0].get("joined")), "independent task join")
+        start_time = datetime.now(timezone.utc) + timedelta(hours=2)
+        terms = {"proposal_id": "online-meeting", "version": 1, "topic": scope["topic"],
+                 "participant_ids": ["self", "test-contact"], "start": start_time.isoformat(),
+                 "end": (start_time + timedelta(minutes=30)).isoformat()}
+        send_event(store, "proposal", terms)
+        until(lambda: advance()[1][0].get("terms"), "shared proposal")
+        assert peer_store.inbox(peer_owner, "local-b")["messages"]
+        send_event(store, "accept")
+        send_event(peer_store, "accept")
+
+        def both_closed():
+            left, right = advance()
+            return left[0]["phase"] == right[0]["phase"] == "closed"
+
+        until(both_closed, "matching bilateral agreement", timeout=35)
+        left, right = advance()
+        assert left[0]["agreement"] == right[0]["agreement"]
+        assert left[0]["task_id"] == "local-a" and right[0]["task_id"] == "local-b"
+        snapshot = roundtrip("collaboration.state", params={"task_id": "local-a"})["result"]
+        assert snapshot["collaboration"]["calendar_created"] is False
+        assert snapshot["collaboration"]["collaborations"][0]["phase"] == "closed"
+        final_attention = roundtrip("attention.list")["result"]
+        assert any(item["kind"] == "collaboration_completed" for item in final_attention["items"])
 
         # These packets still traverse signed/encrypted Go transport. The bridge
         # must compare payload claims against the authenticated outer envelope.
@@ -178,7 +262,10 @@ api:
             "method scope enforced", "local revocation enforced", "local owner contact isolation",
             "response store failure leaves request pending for idempotent retry", "invalid method parameters rejected",
             "authenticated sender claim and envelope correlation enforced", "remote native approval stays unsupported",
-            "conversation submission remains queued without a model response"], "logs": str(folder),
+            "conversation submission remains queued without a model response",
+            "attention explicit pairing, owner isolation, and native resolution tombstones",
+            "independent local tasks negotiate over real authenticated encrypted helper messages",
+            "matching agreement and completion attention visible through read-only RPC"], "logs": str(folder),
             "scope": "Fresh local identities and real Go processes; no production messages or model calls"}
         (folder / "result.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         print(json.dumps(report, ensure_ascii=False, indent=2))
@@ -187,6 +274,8 @@ api:
             bridge.close()
         if store:
             store.close()
+        if peer_store:
+            peer_store.close()
         for process in reversed(processes):
             process.terminate()
             try:
