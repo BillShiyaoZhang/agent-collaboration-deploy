@@ -79,7 +79,7 @@ sequenceDiagram
     B-->>W: 返回绑定 request_id 和双方 URN 的响应
 ```
 
-Web 的控制台身份兼容既有 URN，不要求用户重新生成身份。未配对、错主体、越权方法、重放冲突和到期请求不能获得数据。远程 conversation.send 提交到真实 Hermes 独立会话，最终答复从 agent 侧 conversation.get 查询；远程审批暂不开放。
+Web 的控制台身份兼容既有 URN，不要求用户重新生成身份。未配对、错主体、越权方法、重放冲突和到期请求不能获得数据。远程 conversation.send 提交到真实 Hermes 独立会话，最终答复从 agent 侧 conversation.get 查询。用户还可通过单独获准的 contacts.add 添加联系人、approval.respond 回答 agent 的具体审批；Agent 从本地配对导出主体并保存结果，再由同一读取同步链路更新 Web。旧配对不会自动增加这两项权限，批准也不会直接执行业务发送。
 
 ### 账户恢复与后台同步
 

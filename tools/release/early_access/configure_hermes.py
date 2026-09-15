@@ -19,6 +19,7 @@ import uuid
 from install import ensure_hermes, utf8_output
 
 PAIR_METHODS = ["capabilities", "contacts.list", "collaboration.state", "inbox.list", "attention.list", "conversation.send", "conversation.get"]
+WEB_ACTION_METHODS = ["contacts.add", "approval.respond"]
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -108,6 +109,9 @@ def configure(args):
         raise ValueError("--pair-console requires --remote and an explicit --expires RFC3339 deadline")
     if args.expires and not args.pair_console:
         raise ValueError("--expires only applies with --pair-console")
+    if args.allow_web_actions and not args.pair_console:
+        raise ValueError("--allow-web-actions requires an explicit --pair-console grant")
+    pair_methods = [*PAIR_METHODS, *(WEB_ACTION_METHODS if args.allow_web_actions else [])]
     peers = [validate_urn(peer) for peer in args.allow_peer]
     if args.pair_console:
         peers.append(validate_urn(args.pair_console))
@@ -128,7 +132,7 @@ def configure(args):
     remote_enabled = platform.get("remote_enabled", extra.get("remote_enabled")) is True
     plan = {"profile": str(home), "config": str(config_path), "helper_url": helper_url, "urn": urn,
             "collaboration_enabled": True, "remote_enabled": remote_enabled, "allow_from": allowed,
-            "remote_pairing": {"console_urn": args.pair_console, "methods": PAIR_METHODS,
+            "remote_pairing": {"console_urn": args.pair_console, "methods": pair_methods,
                                "expires_at": args.expires} if args.pair_console else None}
     print(json.dumps({"status": "configuration_plan", **plan}, ensure_ascii=False, indent=2))
     if not allowed:
@@ -155,7 +159,7 @@ def configure(args):
         try:
             bridge = RemoteBridge(remote_path, None, urn, bound_principal=hermes_principal(home))
             try:
-                bridge.pair(args.pair_console, hermes_principal(home), PAIR_METHODS, args.expires)
+                bridge.pair(args.pair_console, hermes_principal(home), pair_methods, args.expires)
             finally:
                 bridge.close()
         except Exception as exc:
@@ -173,6 +177,7 @@ def main(argv=None):
     cli.add_argument("--allow-peer", action="append", default=[], help="Explicit peer URN; repeat as needed. '*' is rejected")
     cli.add_argument("--remote", action="store_true", help="Enable the paired remote RPC processor; does not itself trust a console")
     cli.add_argument("--pair-console", help="Explicit local permission for this console to read state and converse with this Hermes profile")
+    cli.add_argument("--allow-web-actions", action="store_true", help="Also explicitly permit this paired console to add contacts and answer collaboration approvals")
     cli.add_argument("--expires", help="Required RFC3339 expiry for --pair-console")
     cli.add_argument("--check-only", action="store_true", help="Read helper and show the exact configuration/pairing plan without writing")
     args = cli.parse_args(argv)

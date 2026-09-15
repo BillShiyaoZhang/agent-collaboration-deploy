@@ -11,7 +11,7 @@
 | Hermes connector | 将真实宿主会话、确认 callback 与 Gateway 生命周期接到 runtime | 不复制策略内核，不将普通远端消息变成主人身份 |
 | Go helper / SDK | 网络身份、签名、加解密、本机持久 inbox/outbox | 不根据消息正文决定主人授权 |
 | Go platform | Registry、MQ、Relay、基础设施管理 | 不维护个人协作委托或通讯录别名 |
-| Web 工作台 | Web 登录、控制台身份、账户连接、已认证数据的加密持久副本、会话恢复、主动同步；独立的有限期 RPC 密文缓存 | 不自行授予 agent 权限，不定时发送会话或代替原生审批，不生成模拟业务结果 |
+| Web 工作台 | Web 登录、控制台身份、账户连接、已认证数据的加密持久副本、会话恢复、主动同步，以及已获准的联系人添加与审批回答；独立的有限期 RPC 密文缓存 | 不自行扩大配对权限，不在后台发送会话或批准事项，不生成模拟业务结果 |
 | 官网静态页面（Web 仓库 `site/`） | 产品介绍、项目关系、接入引导；由 nginx 在 `/` 直接提供 | 不依赖 Platform 或 Next.js 进程，不处理登录和业务操作 |
 
 Web 中添加 agent 只是连接记录。真正的远程访问权由 agent 侧配对赋予，绑定控制台 URN、明确方法范围、主人主体和到期时间。即使有人知道 agent 的 URN，也不能因此查询其联系人或任务。
@@ -52,11 +52,11 @@ Web 中添加 agent 只是连接记录。真正的远程访问权由 agent 侧�
 
 首次联系人绑定、委托和需追加确认的动作经可信交互渠道处理。Store 持久保存联系人、资料、委托、方案、审批、操作、预算和审计；执行前重新检查授权并预占预算，稳定 operation_id/message_id 支持重试和恢复。新增参会者不获得原资料权限，单次例外不扩大整个委托；已被 helper 接受或已披露的内容不能召回。
 
-Hermes 的 Host/Interaction 适配器已提供真实宿主会话和原生确认。其他宿主、知识图谱及交互渠道需要实现并验证自己的适配器。当前支持范围不包含对端来信自动唤醒私人模型、远程代批、日历写入和全量私人记忆同步。
+Hermes 的 Host/Interaction 适配器已提供真实宿主会话和原生确认。Web 通过独立获准的控制方法接受本人的明确确认。其他宿主、知识图谱及交互渠道需要实现并验证自己的适配器。当前支持范围不包含对端来信自动唤醒私人模型、日历写入和全量私人记忆同步。
 
 ## 授权渠道
 
-Hermes 当前实现仍使用原生问题卡 callback。其它渠道可以实现自己的适配器；实现代码须可信安装并验证真实渠道身份，不能仅写一个返回“同意”的函数就声称完成授权集成。通知和主动唤醒已有注册与调用接口，但未因此启用后台私人会话自动协商。
+Hermes 使用原生问题卡 callback；Web 可通过本地配对显式授予的 `approval.respond` 提交本人对具体请求的决定，Agent 从配对导出主体并检查权限、期限和当前业务状态。其它渠道可以实现自己的适配器；实现代码须可信安装并验证真实渠道身份，不能仅写一个返回“同意”的函数就声称完成授权集成。通知和主动唤醒已有注册与调用接口，但未因此启用后台私人会话自动协商。
 
 ## Web 远程协议
 
@@ -70,9 +70,9 @@ Agent 侧 RemoteBridge 使用本地配对与持久请求记录：
 4. 从 agent 侧读取事实或提交真实会话工作；保存结果后通过 helper 回传。
 5. 返回消息被 helper 接受后再 ACK 原请求；故障重试保留原响应。
 
-当前方法为 `capabilities`、`contacts.list`、`collaboration.state`、`inbox.list`、`attention.list`，以及 Hermes 实现的 `conversation.send` / `conversation.get`。`attention.list` 需要本机明确配对，旧配对不自动扩大。独立只读 daemon 不宣称具备 Hermes 会话能力。`conversation.send` 返回 submitted 仅代表已提交，最终结果由 conversation.get 从 agent 侧读取。
+当前读取方法为 `capabilities`、`contacts.list`、`collaboration.state`、`inbox.list`、`attention.list`，另有显式授权的 `contacts.add`、`approval.respond`，以及 Hermes 实现的 `conversation.send` / `conversation.get`。所有方法需要本机明确配对，旧配对不自动扩大。独立 daemon 不宣称具备 Hermes 会话能力。`conversation.send` 返回 submitted 仅代表已提交，最终结果由 conversation.get 从 agent 侧读取。
 
-远程审批当前不开放。Web 可以查看 agent 侧的待确认状态，原生审批仍回到已实现的用户交互渠道。后续渠道适配要补充身份验证、问题呈现、回答绑定、期限与撤销测试，才能声明支持。
+`contacts.add` 将用户确认的联系人 ID、别名和 URN 绑定写入 Agent Store，无需模型调用。`approval.respond` 只回答 agent 已生成的具体审批；校验主体、期限、撤销与内容版本后复用 agent 的审批状态转移，不直接发消息或执行外部工具。Web 从 agent 同步联系人、审批和事项结果，后台 worker 不自动调用这两个写方法。新增能力需要发布匹配的 Agent/runtime 和 Web，并在本机显式更新配对，操作见[安装包配对说明](../../tools/release/early_access/README.md#4-配对远程-web)。
 
 ## Web 持久副本与主动同步
 

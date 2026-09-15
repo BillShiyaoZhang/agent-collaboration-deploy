@@ -64,7 +64,7 @@ python configure_hermes.py --helper-url http://127.0.0.1:45042
 python configure_hermes.py --allow-peer PEER_URN
 ```
 
-第一次联系人绑定与事项范围仍需原生问题卡确认；配置允许收到某人的消息，不等于许可向其披露资料。
+第一次联系人绑定与事项范围需要本人确认，可使用 Hermes 原生问题卡，或按下一节显式授权后的 Web 工作台。配置允许收到某人的消息，不等于许可向其披露资料。
 
 ## 4. 配对远程 Web
 
@@ -75,13 +75,26 @@ python configure_hermes.py --remote --pair-console CONSOLE_URN --expires FUTURE_
 python configure_hermes.py --remote --pair-console CONSOLE_URN --expires FUTURE_UTC_EXPIRY
 ```
 
-此显式本地命令授权该控制台查询 capabilities、contacts.list、collaboration.state、inbox.list、attention.list，以及 conversation.send / conversation.get；不授予原生协作审批。脚本把配对绑定到实际 Hermes profile，并将控制台加入明确 allow_from。已有配对不会因代码升级自动增加 attention.list；需本人在本机查看更新后的配对计划并显式重新配对。重启 Gateway 后，在 Web 查询能力并发送一条无副作用的测试请求。
+这两条命令的默认范围包括 capabilities、contacts.list、collaboration.state、inbox.list、attention.list，以及 conversation.send / conversation.get。脚本把配对绑定到实际 Hermes profile，并将控制台加入明确 allow_from。
+
+要允许在 Web 的“联系人”中添加联系人，并在“事项”中同意或拒绝待确认请求，使用新版 Agent/runtime 和 Web，并显式加入 `--allow-web-actions`：
+
+```sh
+python configure_hermes.py --remote --pair-console CONSOLE_URN --expires FUTURE_UTC_EXPIRY --allow-web-actions --check-only
+python configure_hermes.py --remote --pair-console CONSOLE_URN --expires FUTURE_UTC_EXPIRY --allow-web-actions
+```
+
+此选项额外授予 `contacts.add` 和 `approval.respond`。先核对第一条命令显示的控制台、真实 profile、全部方法和期限，再执行第二条。Web 提交联系人表单即确认该姓名/别名与 URN 的绑定；审批页的明确同意或拒绝会写回 agent。联系人、审批和事项仍由 agent 保存，再与其它数据一起同步到 Web；批准本身不会直接发送业务消息。
+
+已有配对不会因为安装、代码升级或单独执行 `--remote` 自动增权。升级现有配对时使用同一控制台 URN，在本机显式执行上述带 `--allow-web-actions` 的两条命令；重配会以计划中的完整方法集合和期限替换该控制台的原配对。若原配对使用自选方法，应改用 `python -m agent_comm_runtime.daemon remote pair`，逐项 `--allow` 保留所需方法并加入这两项。仅想授予其中一项时也使用逐项 `--allow`。重启 Gateway 后，在 Web 查询能力并检查已授权功能。
+
+本节新增的 Web 操作需要发布并安装匹配版本的 Agent/runtime、配置脚本和 Web；源码更新不表示上方公共安装包或线上工作台已经升级。旧 agent 或未授予对应方法的配对会继续显示功能未开放。
 
 新版源码的 Hermes 桌面提醒通过随 connector wheel 附带的 companion 插件提供。安装与启用步骤见 [Hermes connector 提醒说明](../../../agent-comm-platform/agent-comm/connectors/hermes-platform/README.md)。包内持久待办始终独立于系统通知显示；浏览器系统通知需要用户主动开启，页面关闭后的 Web Push 尚未实现。本文更新不代表上方公共下载包已发布此版本。
 
 可使用纯文字回显：“请原样回复‘蓝色纸船’，无需检查外部状态。它不代表任何系统状态、审批或操作结果。”同时检查请求完成状态和真实回复；测试词不是授权或业务完成凭据。
 
-远程提交成功只表示进入队列；完成状态与真正答复由 agent 侧回传。当前 Web 按账号保存已同步的联系人、事项、收件箱和已知会话，并在后台继续读取进展；agent 提供真实状态和执行授权。原生问题卡请在该问题回答框作答，主聊天框中的“可以”不会自动批准。
+远程对话提交成功只表示进入队列；完成状态与真正答复由 agent 侧回传。当前 Web 按账号保存已同步的联系人、事项、收件箱和已知会话，并在后台继续读取进展；agent 提供真实状态和执行授权。Web 确认须使用对应请求的操作按钮；若在 Hermes 处理，则在原生问题卡的回答框作答。主聊天框中的“可以”不会自动批准。结果尚未确认时先同步核实，不能把旧快照当作本次操作成功。
 
 撤销远程访问：将 PROFILE_PATH 换成脚本打印的实际 profile 路径，把 CONSOLE_URN 换成已配对控制台。使用已安装 runtime 的 Hermes Python：
 

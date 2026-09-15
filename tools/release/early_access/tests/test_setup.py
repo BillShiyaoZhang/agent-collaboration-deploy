@@ -236,9 +236,11 @@ def atomic_config_write(path, data):
     def test_check_only_pair_plan_has_no_configuration_or_pairing_side_effect(self):
         expires = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
         code, output, error = self.run_configure("--remote", "--pair-console", "urn:hermes:agent:WebConsole123",
-                                               "--expires", expires, "--check-only")
+                                               "--expires", expires, "--allow-web-actions", "--check-only")
         self.assertEqual(code, 0, error)
         self.assertIn("conversation.send", output)
+        self.assertIn("contacts.add", output)
+        self.assertIn("approval.respond", output)
         self.assertEqual(self.config_path.read_bytes(), self.original_bytes)
         self.assertEqual(list(self.home.glob("config.yaml.agent-comm-backup-*")), [])
         self.assertFalse((self.home / "agent-comm").exists())
@@ -256,13 +258,43 @@ def atomic_config_write(path, data):
             pairing = bridge.pairings()[0]
             self.assertEqual(pairing["owner_principal"], hermes_principal(self.home))
             self.assertEqual(set(pairing["methods"]), set(configure_hermes.PAIR_METHODS))
+            self.assertNotIn("contacts.add", pairing["methods"])
+            self.assertNotIn("approval.respond", pairing["methods"])
             self.assertEqual(pairing["expires_at"], expires)
         finally:
             bridge.close()
         self.assertIn(console, self.read_config()["platforms"]["agent_comm"]["extra"]["allow_from"])
 
+    def test_web_actions_require_explicit_repair_and_unpaired_configuration_preserves_existing_grant(self):
+        expires = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+        console = "urn:hermes:agent:WebConsole123"
+        pair_args = ("--remote", "--pair-console", console, "--expires", expires)
+        self.assertEqual(self.run_configure(*pair_args)[0], 0)
+        path = self.home / "agent-comm/remote.sqlite3"
+
+        def current_pairing():
+            bridge = RemoteBridge(path, None, "urn:hermes:agent:ExistingHelper123")
+            try:
+                return bridge.pairings()[0]
+            finally:
+                bridge.close()
+
+        original_pairing = current_pairing()
+        self.assertEqual(self.run_configure("--remote")[0], 0)
+        self.assertEqual(current_pairing(), original_pairing)
+        self.assertEqual(self.run_configure(*pair_args, "--allow-web-actions", "--check-only")[0], 0)
+        self.assertEqual(current_pairing(), original_pairing)
+
+        code, _, error = self.run_configure(*pair_args, "--allow-web-actions")
+        self.assertEqual(code, 0, error)
+        updated = current_pairing()
+        self.assertEqual(set(updated["methods"]), set(configure_hermes.PAIR_METHODS + configure_hermes.WEB_ACTION_METHODS))
+        self.assertEqual(updated["owner_principal"], original_pairing["owner_principal"])
+        self.assertEqual(updated["expires_at"], expires)
+
     def test_wildcards_invalid_pair_args_and_malformed_config_fail_closed(self):
         for args in [("--allow-peer", "*"), ("--pair-console", "urn:hermes:agent:WebConsole123"),
+                     ("--allow-web-actions",), ("--remote", "--allow-web-actions"),
                      ("--remote", "--pair-console", "urn:hermes:agent:WebConsole123", "--expires", "2000-01-01T00:00:00Z")]:
             with self.subTest(args=args):
                 self.assertEqual(self.run_configure(*args)[0], 2)

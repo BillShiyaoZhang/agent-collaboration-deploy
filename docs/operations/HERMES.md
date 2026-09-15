@@ -58,7 +58,9 @@ curl --fail http://127.0.0.1:45042/info
 
 ## 5. 配对与验证
 
-工作台控制台身份必须在 agent 本机配对，并绑定真实 profile 主体、明确方法和期限。当前可用读取方法为 `capabilities`、`contacts.list`、`collaboration.state`、`inbox.list`、`attention.list`；Hermes 另提供 `conversation.send` / `conversation.get`。旧配对需本人显式更新才包含 attention.list。原生协作审批不通过远程聊天批准。新版 companion 的桌面提醒安装步骤见 [connector 提醒说明](../../agent-comm-platform/agent-comm/connectors/hermes-platform/README.md#协作待办与纯提醒-companionn1)。
+工作台控制台身份必须在 agent 本机配对，并绑定真实 profile 主体、明确方法和期限。当前可用读取方法为 `capabilities`、`contacts.list`、`collaboration.state`、`inbox.list`、`attention.list`；Hermes 另提供 `conversation.send` / `conversation.get`。新版源码支持 `contacts.add` 和 `approval.respond`：用户可在 Web 添加联系人并回答具体审批，结果保存在 agent 并同步，远程聊天中的同意文本不构成审批。
+
+旧配对需本人显式更新，安装或启用远程模式不会自动增权。使用新版配置脚本时，先查看 `--remote --pair-console CONSOLE_URN --expires FUTURE_UTC_EXPIRY --allow-web-actions --check-only` 的完整计划，再移除 `--check-only` 执行；如使用 runtime CLI，则逐项 `--allow` 保留全部需要的方法并加入这两项。详见[接入包配对说明](../../tools/release/early_access/README.md#4-配对远程-web)。此功能需要发布匹配的 Agent/runtime 和 Web，不代表旧公共下载包已更新。新版 companion 的桌面提醒安装步骤见 [connector 提醒说明](../../agent-comm-platform/agent-comm/connectors/hermes-platform/README.md#协作待办与纯提醒-companionn1)。
 
 发送一个不调用工具的纯文字回显，核对请求最终完成状态、真实回复和后台同步结果。“已受理”只表示提交成功；消息 ACK 不表示业务完成。重试结果不确定的发送应保留同一个请求 ID，先检查既有会话。
 
