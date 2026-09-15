@@ -259,6 +259,9 @@ docker compose logs -f
 
 ## Personal Agent Collaboration
 
+Agent 侧能力与 skill 的逐项映射、原文档缺漏及简洁加好友文案导出入口见
+[agent-comm 能力与 skill 对照表](agent-comm-platform/agent-comm/docs/CAPABILITY_SKILL_MAP.md)。
+
 The independent SDK Python runtime owns local contacts, scoped mandates,
 confirmations, controlled sends and persistent state. Hermes provides the
 first host/interaction adapter. See the [runtime developer guide](agent-comm-platform/agent-comm/python/README.md)
