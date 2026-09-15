@@ -55,7 +55,8 @@ cd agent-collaboration-deploy
 
 - [文档导航](docs/README.md)：按读者与工作类型查找说明。
 - [部署与升级](docs/operations/DEPLOYMENT.md)：配置、DNS、证书、启动、备份与验证。
-- [当前架构](docs/architecture/OVERVIEW.md) · [流程图](docs/architecture/FLOWS.md)：组件职责、授权与同步。
+- [当前架构](docs/architecture/OVERVIEW.md) · [流程图](docs/architecture/FLOWS.md) · [技术实现详解](docs/architecture/TECHNICAL_IMPLEMENTATION_WALKTHROUGH.md)：组件职责、授权、同步与 13 张实现图。
+- [Agent 能力与 skill 对照](agent-comm-platform/agent-comm/docs/architecture/CAPABILITY_SKILL_MAP.md)：能力覆盖、遗漏修正与包含平台地址和接入链接的加好友文案导出。
 - [发布记录](docs/releases/README.md)：版本、验证范围、运行镜像及回滚位置。
 - [仓库维护](docs/maintenance/REPOSITORY_MAINTENANCE.md)：目录职责、依赖与发布顺序。
 - [本次整理记录](docs/maintenance/STRUCTURE_CLEANUP_2026-09-15.md)：迁移范围、删除依据和验证结果。
