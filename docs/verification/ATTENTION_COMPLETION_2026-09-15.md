@@ -69,7 +69,7 @@
 - Web commit：`79951288acdfec35bd0b69b5e08db19fee73b6b3`
 - 最终 SDK commit：`8c0279677c44ebe2085bf4077084c040b67c266c`
 - 最终 Platform commit：`57d68308f6e38962d2b1b8b9aae164e036166689`
-- GitHub 分支：`codex/notifications-collaboration-20260915`。本机 GitHub Git 端点连接超时后，使用同一部署服务器和现有 Git 认证同步经校验的代码 bundle；保持原提交 SHA，不强制推送，不更改认证。
+- GitHub 分支：`codex/notifications-collaboration-20260915`。本机所解析的区域 GitHub 地址连接超时；从官方 HTTPS DNS 获得可达地址并完成主机名/TLS 校验后，使用本机既有 Git 认证正常推送。服务器隔离推送尝试未发布提交，源码另外同步；全过程不强制推送，不修改系统 DNS、认证或 TLS 校验设置。
 - Build：`qsMbqjwWP3ff0lFYXKfbb`
 - Linux image：`sha256:98836e94581e36d601f113a591b92c507835ad7e150a9f6b8b954b625acd3013`
 - 21 组真实 HTTP、登录、账号隔离、cookie、通知、迁移和运行时检查通过；另外验证 Push 设置鉴权、无订阅测试拒绝、Service Worker 缓存和作用域、VAPID 持久化。全程没有候选网络或真实业务数据。
