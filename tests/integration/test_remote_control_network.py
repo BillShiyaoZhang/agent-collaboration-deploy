@@ -1,0 +1,202 @@
+"""Real local Go platform/helpers + Python remote authority. No public messages."""
+import argparse
+from datetime import datetime, timedelta, timezone
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import uuid
+
+ROOT = Path(__file__).resolve().parents[2]
+SDK = ROOT / "agent-comm-platform" / "agent-comm"
+sys.path[:0] = [str(SDK / "python"), str(SDK / "tools")]
+from agent_comm_runtime.remote import PROTOCOL, RemoteBridge
+from agent_comm_runtime.store import Store
+from agent_comm_runtime.transport import HelperTransport
+from test_helper_platform import port, request, until
+
+
+def main():
+    cli = argparse.ArgumentParser()
+    cli.add_argument("--helper", type=Path, required=True)
+    cli.add_argument("--platform", type=Path, required=True)
+    args = cli.parse_args()
+    folder = ROOT / "build" / "integration" / "remote-control-network" / str(uuid.uuid4())
+    folder.mkdir(parents=True)
+    ports = {name: port() for name in ("platform", "agent", "console")}
+    urls = {name: f"http://127.0.0.1:{value}" for name, value in ports.items()}
+    config = folder / "config.yaml"
+    base = folder.as_posix()
+    config.write_text(f"""platform:
+  data_dir: '{base}/data'
+identity:
+  keys_dir: '{base}/data/keys'
+libp2p:
+  listen_addrs: ['/ip4/127.0.0.1/tcp/0']
+relay:
+  enabled: false
+registry:
+  persist_db: '{base}/data/registry.db'
+mq:
+  db_path: '{base}/data/mq.db'
+api:
+  listen_addr: '127.0.0.1:{ports['platform']}'
+  rate_limit_rate: 0
+""", encoding="utf-8")
+    processes, logs = [], []
+    bridge = store = None
+    # The production platform accepts environment overrides even with -config.
+    # Keep this test's process paths/listeners in its fresh local sandbox.
+    process_env = {key: value for key, value in os.environ.items() if not key.upper().startswith("PLATFORM_")}
+
+    def start(name):
+        log = (folder / f"{name}.log").open("ab")
+        logs.append(log)
+        command = [str(args.platform.resolve()), "-config", str(config)] if name == "platform" else [
+            str(args.helper.resolve()), "daemon", str(folder / f"keys-{name}"), urls["platform"], str(ports[name])]
+        processes.append(subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, env=process_env, cwd=folder,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0))
+        return until(lambda: request(urls[name], "/healthz" if name == "platform" else "/info"), name, timeout=35)
+
+    def iso(seconds):
+        return (datetime.now(timezone.utc) + timedelta(seconds=seconds)).isoformat().replace("+00:00", "Z")
+
+    try:
+        start("platform")
+        agent, console = start("agent"), start("console")
+        for identity in (agent, console):
+            until(lambda: request(urls["platform"], "/api/v1/registry/resolve?urn=" + identity["urn"]).get("found"), "registry")
+        incoming, outgoing = HelperTransport(urls["agent"]), HelperTransport(urls["console"])
+        store = Store(folder / "collaboration.sqlite3", local_urn=agent["urn"])
+        owner = "network-test-owner|native-session"
+        prepared = store.prepare_contact("test-contact", ["本机保存的联系人"], console["urn"], owner)
+        lease = store.begin_confirmation(prepared["approval_id"], owner)
+        store.finish_confirmation(prepared["approval_id"], lease["token"], owner, "同意")
+        foreign_owner = "another-local-owner|native-session"
+        foreign_contact = store.prepare_contact("foreign-contact", ["其他账号的联系人"], agent["urn"], foreign_owner)
+        foreign_lease = store.begin_confirmation(foreign_contact["approval_id"], foreign_owner)
+        store.finish_confirmation(foreign_contact["approval_id"], foreign_lease["token"], foreign_owner, "同意")
+        bridge = RemoteBridge(folder / "remote.sqlite3", store, agent["urn"])
+        bridge.pair(console["urn"], "network-test-owner", ["capabilities", "contacts.list"], iso(3600))
+
+        def send_request(method, params=None, packet_overrides=None, envelope_overrides=None):
+            rid = str(uuid.uuid4())
+            packet = {"protocol": PROTOCOL, "type": "request", "request_id": rid, "method": method,
+                      "params": params or {}, "agent_urn": agent["urn"], "console_urn": console["urn"], "deadline": iso(120)}
+            packet.update(packet_overrides or {})
+            body = {"message_id": rid, "recipient_urn": agent["urn"], "text": json.dumps(packet),
+                    "kind": "control.request", "conversation_id": "control:" + rid, "deadline": packet["deadline"]}
+            body.update(envelope_overrides or {})
+            assert outgoing.store(body)["success"]
+            message = until(lambda: next((m for m in incoming.retrieve() if m["message_id"] == rid), None), "control arrival")
+            assert message["sender_urn"] == console["urn"]
+            # Native inbox must not ACK or ingest control messages before the bridge.
+            store.sync_inbox(incoming)
+            assert any(m["message_id"] == rid for m in incoming.retrieve())
+            return packet, message
+
+        def roundtrip(method, restart=False, params=None, fail_delivery=False):
+            nonlocal bridge
+            packet, message = send_request(method, params)
+            rid = packet["request_id"]
+            first_response = bridge.handle(message)
+            if restart:
+                bridge.close()
+                bridge = RemoteBridge(folder / "remote.sqlite3", store, agent["urn"])
+                assert bridge.handle(message) == first_response
+            if fail_delivery:
+                class UnavailableResponseTransport:
+                    def store(self, body):
+                        raise OSError("isolated test: helper response store unavailable")
+
+                    def ack(self, message_ids):
+                        raise AssertionError("Request ACK happened before response was accepted")
+
+                try:
+                    bridge.process(message, UnavailableResponseTransport())
+                except OSError:
+                    pass
+                else:
+                    raise AssertionError("Injected response store failure did not propagate")
+                assert any(m["message_id"] == rid for m in incoming.retrieve())
+                assert not any(m.get("in_reply_to") == rid for m in outgoing.retrieve())
+                assert bridge.handle(message) == first_response
+            bridge.process(message, incoming)
+            reply = until(lambda: next((m for m in outgoing.retrieve() if m.get("in_reply_to") == rid), None), "response arrival")
+            assert reply["sender_urn"] == agent["urn"] and reply["deadline"] == packet["deadline"]
+            response = json.loads(reply["text"])
+            for key in ("request_id", "method", "agent_urn", "console_urn", "deadline"):
+                assert response[key] == packet[key]
+            assert response["type"] == "response" and response["protocol"] == PROTOCOL
+            outgoing.ack([reply["message_id"]])
+            assert not any(m["message_id"] == rid for m in incoming.retrieve())
+            return response
+
+        caps = roundtrip("capabilities")
+        assert any(x["name"] == "contacts.list" and x["available"] for x in caps["result"]["methods"])
+        contacts = roundtrip("contacts.list", restart=True)
+        assert [c["aliases"] for c in contacts["result"]["contacts"]] == [["本机保存的联系人"]]
+        assert roundtrip("contacts.list", fail_delivery=True)["result"] == contacts["result"]
+        assert roundtrip("contacts.list", params={"unexpected": True})["error"]["code"] == "invalid_params"
+        assert roundtrip("inbox.list")["error"]["code"] == "method_not_allowed"
+
+        # These packets still traverse signed/encrypted Go transport. The bridge
+        # must compare payload claims against the authenticated outer envelope.
+        for packet_overrides, envelope_overrides in (
+            ({"console_urn": agent["urn"]}, {}),
+            ({"request_id": "forged-inner-request-id"}, {}),
+            ({}, {"conversation_id": "control:wrong-correlation"}),
+        ):
+            _, malformed = send_request("contacts.list", packet_overrides=packet_overrides,
+                                        envelope_overrides=envelope_overrides)
+            try:
+                bridge.process(malformed, incoming)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("Untrusted control identity/correlation was accepted")
+            assert any(m["message_id"] == malformed["message_id"] for m in incoming.retrieve())
+            assert not any(m.get("in_reply_to") == malformed["message_id"] for m in outgoing.retrieve())
+            incoming.ack([malformed["message_id"]])  # Remove only this test's known poison packet.
+
+        bridge.conversations = True
+        bridge.pair(console["urn"], "network-test-owner", ["capabilities", "contacts.list", "conversation.send",
+                    "conversation.get", "approval.respond"], iso(3600))
+        assert roundtrip("approval.respond")["error"]["code"] == "unsupported_method"
+        submitted = roundtrip("conversation.send", params={"text": "隔离测试：只排队，不调用模型"})
+        assert submitted["result"]["status"] == "submitted"
+        conversation = roundtrip("conversation.get", params={"conversation_id": submitted["result"]["conversation_id"]})
+        assert len(conversation["result"]["turns"]) == 1
+        turn = conversation["result"]["turns"][0]
+        assert turn["status"] == "submitted" and turn["response"] is None and turn["error"] is None
+
+        bridge.revoke(console["urn"])
+        assert roundtrip("contacts.list")["error"]["code"] == "not_paired"
+        report = {"result": "PASS", "checks": ["real signed encrypted control roundtrip", "agent-owned contacts",
+            "native inbox leaves control requests unacknowledged", "bridge restart preserves immutable response",
+            "method scope enforced", "local revocation enforced", "local owner contact isolation",
+            "response store failure leaves request pending for idempotent retry", "invalid method parameters rejected",
+            "authenticated sender claim and envelope correlation enforced", "remote native approval stays unsupported",
+            "conversation submission remains queued without a model response"], "logs": str(folder),
+            "scope": "Fresh local identities and real Go processes; no production messages or model calls"}
+        (folder / "result.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    finally:
+        if bridge:
+            bridge.close()
+        if store:
+            store.close()
+        for process in reversed(processes):
+            process.terminate()
+            try:
+                process.wait(timeout=8)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=8)
+        for log in logs:
+            log.close()
+
+
+if __name__ == "__main__":
+    main()

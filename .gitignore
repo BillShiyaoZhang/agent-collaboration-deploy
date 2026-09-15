@@ -1,5 +1,7 @@
 # Environment variables (set before running docker compose)
 .env
+.env.*
+!.env.example
 
 # Data volumes
 data/
@@ -24,8 +26,6 @@ Thumbs.db
 
 # Dependencies & Build artifacts
 node_modules/
-dist/
-build/
 *.egg-info/
 __pycache__/
 *.pyc
