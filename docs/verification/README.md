@@ -2,7 +2,8 @@
 
 ## 已完成的历史验收
 
-- [2026-09-15 双边协作与用户提醒](COLLABORATION_ATTENTION_2026-09-15.md)：M1/N1 本地源码、两个真实 helper 的协作闭环、持久提醒、Hermes 认证与 Web 浏览器验证；尚未部署。
+- [2026-09-15 通知与协作部署](ATTENTION_DEPLOYMENT_2026-09-15.md)：线上 Web、本机 Hermes、真实待办同步、数据保留与回滚；含系统弹窗和 GitHub 推送的验证边界。
+- [2026-09-15 双边协作与用户提醒](COLLABORATION_ATTENTION_2026-09-15.md)：M1/N1 上线前源码、两个真实 helper 的协作闭环、持久提醒、Hermes 认证与 Web 浏览器验证。
 
 - [2026-09-15 Hermes 系统协作](HERMES_COOPERATION_TEST_2026-09-15.md)：真实回复、上下文、重试、权限、后台保存、本机更新和 Web 上线。
 - [发布索引](../releases/README.md)：各次发布的候选环境、浏览器、迁移及数据保留检查。
