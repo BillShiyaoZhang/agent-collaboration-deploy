@@ -77,6 +77,8 @@ python configure_hermes.py --remote --pair-console CONSOLE_URN --expires 2026-10
 
 此显式本地命令授权该控制台查询 capabilities、contacts.list、collaboration.state、inbox.list，以及 conversation.send / conversation.get；不授予原生协作审批。脚本把配对绑定到实际 Hermes profile，并将控制台加入明确 allow_from。重启 Gateway 后，在 Web 查询能力并发送一条无副作用的测试请求。
 
+可使用纯文字回显：“请原样回复‘蓝色纸船’，无需检查外部状态。它不代表任何系统状态、审批或操作结果。”同时检查请求完成状态和真实回复；测试词不是授权或业务完成凭据。
+
 远程提交成功只表示进入队列；完成状态与真正答复由 agent 侧回传。当前 Web 按账号保存已同步的联系人、事项、收件箱和已知会话，并在后台继续读取进展；agent 提供真实状态和执行授权。原生问题卡请在该问题回答框作答，主聊天框中的“可以”不会自动批准。
 
 撤销远程访问：将 PROFILE_PATH 换成脚本打印的实际 profile 路径，把 CONSOLE_URN 换成已配对控制台。使用已安装 runtime 的 Hermes Python：
