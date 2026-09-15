@@ -1,5 +1,7 @@
 # 当前项目架构与流程图
 
+需要逐层理解实际代码，可阅读 [技术实现详解：13 张 Mermaid 图](TECHNICAL_IMPLEMENTATION_WALKTHROUGH.md)。该文核对 2026-09-15 部署锁定源码，展开加密、RPC、确认租约、消息 ACK、同步 worker、数据模型与故障恢复。
+
 更新：2026-09-14。Web 根据用户要求持久保存账户的连接、联系人和消息，并主动同步；agent 侧提供业务事实与执行授权，通用 runtime 支持不同宿主、记忆与交互渠道。接口细节见 [扩展接口设计](ARCHITECTURE_AND_EXTENSION_PORTS.md)。主动同步改动的验证与上线状态以实际发布记录为准。
 
 ## 1. 产品与数据归属
