@@ -4,6 +4,7 @@
 
 | 日期 | 发布 | 记录内容 |
 | --- | --- | --- |
+| 2026-09-17 | [安全修复上线](SECURITY_RELEASE_2026-09-17.md) | 四仓安全修复、正式镜像重建、密码升级与上线验收 |
 | 2026-09-15 | [并行 worktree 整合与磁盘清理](WORKTREE_INTEGRATION_2026-09-15.md) | 四仓合并、组合验证、固定版本部署、备份回滚与构建缓存清理 |
 | 2026-09-15 | [Hermes 真实协作及 Web 修复](../verification/HERMES_COOPERATION_TEST_2026-09-15.md) | 真实多轮协作、恢复/租约/SQLite 修复、本机安装、Web 切换和后续源码提交 |
 | 2026-09-14 | [官网分离](INTRODUCTION_RELEASE_2026-09-14.md) | 静态官网归属 Web，nginx 路由、独立运行和多端介绍 |
