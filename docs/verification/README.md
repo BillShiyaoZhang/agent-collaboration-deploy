@@ -2,6 +2,8 @@
 
 ## 已完成的历史验收
 
+- [2026-09-16 安全检查与修复](SECURITY_REVIEW_2026-09-16.md)：部署、Web、Platform 与 SDK 的代码审查、依赖漏洞、回归测试及上线边界。
+
 - [2026-09-15 通知与协作部署](ATTENTION_DEPLOYMENT_2026-09-15.md)：线上 Web、本机 Hermes、真实待办同步、数据保留与回滚；含系统弹窗和 GitHub 推送的验证边界。
 - [2026-09-15 双边协作与用户提醒](COLLABORATION_ATTENTION_2026-09-15.md)：M1/N1 上线前源码、两个真实 helper 的协作闭环、持久提醒、Hermes 认证与 Web 浏览器验证。
 

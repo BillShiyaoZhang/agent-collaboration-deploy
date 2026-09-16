@@ -44,6 +44,12 @@ NEXTAUTH_URL=https://agent-communication.online
 
 `NEXTAUTH_SECRET` 同时参与账户内容静态加密，升级时保留原值，备份时与数据库一起妥善保存。它与 `PLATFORM_ADMIN_TOKEN` 都不进入源码或公开安装包。
 
+Compose 在上述两个密钥或 `NEXTAUTH_URL` 缺失、为空时拒绝启动，不再回退到 HTTP 公网地址。Web 镜像通过 HTTPS 软件源及锁文件安装依赖，启动入口仅以 root 修正 `/app/data` 旧卷属主，随后以 UID/GID 1001 执行迁移和应用；不会修改既有加密密钥。
+
+nginx 对注册与凭证登录共享每客户端每分钟 5 次、突发 5 次的限制，超额返回 429；认证请求体上限 16 KiB，其余请求上限 1 MiB。它覆盖传入的 `X-Real-IP`、`X-Forwarded-For`。Platform 的 `api.trusted_proxy_cidrs` 仅允许受信任代理提供客户端地址，组合配置兼容 Docker 默认 `172.16.0.0/12` 地址池。生产应收窄到实际 nginx 地址或专用子网，不向公网发布 8080，也不将不受信任容器加入该网络；自定义地址池必须相应调整配置。
+
+账户密码开始使用 scrypt，旧 bcrypt 哈希在成功登录时升级。升级后的数据库不能直接交给仅支持 bcrypt 的旧镜像，否则这些账户无法登录；回滚版本必须包含新版密码验证器。历史 bcrypt 丢弃的 72 字节以后内容无法从旧哈希恢复，尚未登录的旧账户保留原验证行为。密码输入上限为 1024 UTF-8 字节。完整修复和验证范围见 [安全检查记录](../verification/SECURITY_REVIEW_2026-09-16.md)。
+
 ## DNS 与首次证书
 
 现有服务的 DNS 配置为：

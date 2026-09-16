@@ -37,5 +37,9 @@ api:
   tls_cert: ""
   tls_key: ""
   admin_token: ""
+  # Production agent-net subnet, verified with docker network inspect.
+  # Update this when deploying to a host with a different Docker address pool.
+  trusted_proxy_cidrs:
+    - "192.168.48.0/20"
   rate_limit_rate: 10.0
   rate_limit_burst: 20

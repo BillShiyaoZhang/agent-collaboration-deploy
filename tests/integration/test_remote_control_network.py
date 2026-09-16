@@ -244,10 +244,41 @@ api:
             assert not any(m.get("in_reply_to") == malformed["message_id"] for m in outgoing.retrieve())
             incoming.ack([malformed["message_id"]])  # Remove only this test's known poison packet.
 
-        bridge.conversations = True
+        # Approval responses are supported only through an explicitly scoped
+        # local pairing, and that grant never extends to another owner's work.
+        remote_pending = store.prepare_contact("remote-approved", ["远程明确确认的联系人"], agent["urn"], owner)
+        native_lease = store.begin_confirmation(remote_pending["approval_id"], owner)
+        approval_params = {"approval_id": remote_pending["approval_id"], "decision": "approve"}
+        own_before = store.state(owner)
+        assert roundtrip("approval.respond", params=approval_params)["error"]["code"] == "method_not_allowed"
+        assert store.state(owner) == own_before
+        foreign_pending = store.prepare_contact("foreign-pending", ["其他账号待确认的联系人"], console["urn"], foreign_owner)
+        foreign_before = store.state(foreign_owner)
         bridge.pair(console["urn"], "network-test-owner", ["capabilities", "contacts.list", "conversation.send",
-                    "conversation.get", "approval.respond"], iso(3600))
-        assert roundtrip("approval.respond")["error"]["code"] == "unsupported_method"
+                    "conversation.get", "approval.respond", "test.unimplemented"], iso(3600))
+        methods = {item["name"]: item["available"] for item in roundtrip("capabilities")["result"]["methods"]}
+        assert methods["approval.respond"] is True
+        assert roundtrip("test.unimplemented")["error"]["code"] == "unsupported_method"
+        assert roundtrip("approval.respond")["error"]["code"] == "invalid_params"
+        assert roundtrip("approval.respond", params={**approval_params, "owner_session": foreign_owner})["error"]["code"] == "invalid_params"
+        assert roundtrip("approval.respond", params={"approval_id": foreign_pending["approval_id"],
+                         "decision": "approve"})["error"]["code"] == "invalid_params"
+        assert store.state(foreign_owner) == foreign_before
+        assert store.state(owner) == own_before
+        approved = roundtrip("approval.respond", params=approval_params, restart=True, fail_delivery=True)
+        assert approved["result"] == {"approval_id": remote_pending["approval_id"], "decision": "allow", "status": "approved_once"}
+        assert any(contact["contact_id"] == "remote-approved" for contact in roundtrip("contacts.list")["result"]["contacts"])
+        try:
+            store.finish_confirmation(remote_pending["approval_id"], native_lease["token"], owner, "拒绝")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("A stale native lease reversed the explicit remote decision")
+        assert roundtrip("approval.respond", params={**approval_params, "decision": "deny"})["error"]["code"] == "invalid_params"
+        decision = next(item for item in store.state(owner)["approval_decisions"] if item["approval_id"] == remote_pending["approval_id"])
+        assert decision["status"] == "approved"
+        assert store.state(foreign_owner) == foreign_before
+        bridge.conversations = True
         submitted = roundtrip("conversation.send", params={"text": "隔离测试：只排队，不调用模型"})
         assert submitted["result"]["status"] == "submitted"
         conversation = roundtrip("conversation.get", params={"conversation_id": submitted["result"]["conversation_id"]})
@@ -257,11 +288,14 @@ api:
 
         bridge.revoke(console["urn"])
         assert roundtrip("contacts.list")["error"]["code"] == "not_paired"
+        assert roundtrip("approval.respond", params=approval_params)["error"]["code"] == "not_paired"
         report = {"result": "PASS", "checks": ["real signed encrypted control roundtrip", "agent-owned contacts",
             "native inbox leaves control requests unacknowledged", "bridge restart preserves immutable response",
             "method scope enforced", "local revocation enforced", "local owner contact isolation",
             "response store failure leaves request pending for idempotent retry", "invalid method parameters rejected",
-            "authenticated sender claim and envelope correlation enforced", "remote native approval stays unsupported",
+            "authenticated sender claim and envelope correlation enforced", "unknown methods remain unsupported",
+            "remote approval requires explicit scope and cannot cross owner boundaries",
+            "explicit remote decision survives restart and delivery retry, invalidates native lease, and cannot be reversed",
             "conversation submission remains queued without a model response",
             "attention explicit pairing, owner isolation, and native resolution tombstones",
             "independent local tasks negotiate over real authenticated encrypted helper messages",

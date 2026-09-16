@@ -24,7 +24,7 @@ services:
       dockerfile: Dockerfile
     container_name: agent-platform
     environment:
-      - PLATFORM_ADMIN_TOKEN=${PLATFORM_ADMIN_TOKEN}
+      - PLATFORM_ADMIN_TOKEN=${PLATFORM_ADMIN_TOKEN:?Set PLATFORM_ADMIN_TOKEN in .env}
     volumes:
       - platform_data:/data
       - ./deploy/platform/config.yaml:/etc/platform/config.yaml:ro
@@ -42,8 +42,8 @@ services:
     container_name: agent-web
     environment:
       - DATABASE_URL=file:/app/data/prod.db
-      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://8.130.40.38}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:?Set NEXTAUTH_URL to the public HTTPS origin}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?Set NEXTAUTH_SECRET in .env}
       - AGENT_PLATFORM_URL=http://platform:8080
     volumes:
       - web_data:/app/data
