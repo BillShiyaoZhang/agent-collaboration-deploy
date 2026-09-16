@@ -1,6 +1,7 @@
 services:
   nginx:
-    image: nginx:alpine
+    # Pin the verified official release; regional mirrors may cache older tags.
+    image: nginx:alpine@sha256:c8497b180665e631ec92a5091125bec5b214f0e2b99409e30653a125b37557da
     container_name: agent-nginx
     ports:
       - "80:80"
