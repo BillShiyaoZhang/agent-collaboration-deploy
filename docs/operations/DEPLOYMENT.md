@@ -2,6 +2,12 @@
 
 从部署仓库根目录运行以下命令。Compose 组合运行 nginx、Web 和 Platform；Hermes 与 helper 在用户 agent 所在设备运行，见 [Hermes 接入](HERMES.md)。
 
+## 通过 Workbench CLI 连接
+
+已配置凭证的维护者可按[阿里云官方文档](https://help.aliyun.com/zh/ecs/user-guide/connect-to-an-instance-through-workbench-cli/)使用 `workbench exec -i INSTANCE_ID --command 'hostname && docker ps' --output json` 检查实例。`exec` 每次是独立 shell，关联命令需在同一次调用中切换目录；检查返回的 `exit_code`。无需输出或复制本机 Workbench 凭证。
+
+发布产物用 `workbench upload LOCAL_FILE REMOTE_PATH -i INSTANCE_ID` 上传到新的服务器发布目录，校验 SHA-256 后再使用。长时间部署在服务器保存脚本、日志、PID 和检查点，断开 CLI 后仍能检查实际结果。连接成功本身不表示部署完成；保留以下备份和验证流程。
+
 ## 组件与配置位置
 
 | 项目 | 仓库位置 / 容器入口 |
