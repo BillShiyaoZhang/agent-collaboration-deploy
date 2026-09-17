@@ -2,6 +2,7 @@
 
 ## 已完成的历史验收
 
+- [2026-09-18 Hermes 仅凭官网地址自动接入](HERMES_AUTONOMOUS_ONBOARDING_2026-09-18.md)：干净 Hermes、MiniMax China、官网安装入口、网页确认和本机自动配对；真实模型回复与完整验收结论以该报告为准。
 - [2026-09-17 Agent / Web 能力一致性](AGENT_WEB_PARITY_2026-09-17.md)：好友握手、双端消息与已读、在线状态、绑定注册及配对聊天工具的本地修复和验收。
 - [2026-09-16 安全检查与修复](SECURITY_REVIEW_2026-09-16.md)：部署、Web、Platform 与 SDK 的代码审查、依赖漏洞、回归测试及上线边界。
 
@@ -17,6 +18,8 @@
 
 | 入口 | 覆盖范围 |
 | --- | --- |
+| [Hermes 接入生命周期测试](../../tools/release/early_access/tests/test_onboarding_lifecycle.py) · [签名授权测试](../../tools/release/early_access/tests/test_onboarding_grant.py) | 实际 Python/profile、后台生命周期、签名配对、权限与撤销恢复 |
+| [Web 自动接入测试](../../agent-collaboration-web/tests/unit/onboarding.test.cjs) | 真实 SQLite、agent 身份证明、登录确认、轮询 secret、固定授权与回执 |
 | [跨组件 remote 网络测试](../../tests/integration/test_remote_control_network.py) | 本地真实 helper/Platform 与 Python RPC、恢复、方法权限和撤销 |
 | [SDK helper/Platform 测试](../../agent-comm-platform/agent-comm/tools/test_helper_platform.py) | 认证收发、离线队列、ACK、稳定 ID 和重启恢复 |
 | [Web full-stack smoke](../../agent-collaboration-web/tests/integration/full_stack_smoke.py) | 真实本地 Go/Python/Web 注册、登录、控制身份和加密 RPC |
