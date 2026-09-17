@@ -40,7 +40,7 @@ python -m pip wheel --no-deps --no-build-isolation agent-comm-platform/agent-com
 python tools/release/build_early_access.py --release RELEASE_ID
 ```
 
-输出到 `downloads/`，可用 `--output-dir` 指定独立发布目录。每份 ZIP 保持 `install.py`、`configure_hermes.py` 和 README 并列，包含对应 helper、两个 wheel 及 `SHA256SUMS.json`。脚本逐字节核对 wheel 与当前源码，解压后执行安装脚本的 `--check-only`。源码 ZIP 包括 deploy、Web、platform 和 SDK 四个仓库及其提交清单。
+输出到 `downloads/`，可用 `--output-dir` 指定独立发布目录。每份 ZIP 保持 `onboard_hermes.py`、`install.py`、`configure_hermes.py` 和 README 并列，包含对应 helper、两个 wheel 及 `SHA256SUMS.json`。自动入口处理干净 Hermes 的本机安装、helper 注册、Web 确认后的签名配对与 Gateway 启动；单独的安装和配置入口继续支持已有客户端。脚本逐字节核对 wheel 与当前源码，解压后执行安装脚本的 `--check-only`。源码 ZIP 包括 deploy、Web、platform 和 SDK 四个仓库及其提交清单。
 
 `--release` 默认为当天 UTC 日期，可传版本号或明确的发布标识。包内 Python 版本来自项目 metadata，安装脚本按发布清单核对，不需要手动同步版本常量。归档文件时间戳来自 deploy 提交时间。
 
