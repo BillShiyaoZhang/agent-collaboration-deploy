@@ -77,7 +77,7 @@ def main(argv=None):
     packages, wheels = release_packages()
     verified = verify_wheels(wheels)
     assets = Path(__file__).resolve().parent / "early_access"
-    common = {name: (assets / name).read_bytes() for name in ("README.md", "install.py", "configure_hermes.py")}
+    common = {name: (assets / name).read_bytes() for name in ("README.md", "install.py", "configure_hermes.py", "onboard_hermes.py")}
     common.update({"wheels/" + wheel.name: wheel.read_bytes() for wheel in wheels})
     helpers = {platform: (args.helper_dir / binary).read_bytes() for platform, (binary, _) in VARIANTS.items()}
     invitation = None

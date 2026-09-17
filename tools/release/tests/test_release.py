@@ -152,6 +152,8 @@ class TestReleases(unittest.TestCase):
                 manifest = json.loads(archive.read("SHA256SUMS.json"))
                 self.assertEqual(manifest["packages"], versions)
                 self.assertEqual(manifest["platform"], platform_name)
+                self.assertIn("onboard_hermes.py", manifest["files"])
+                self.assertIn(b"def verify_grant", archive.read("onboard_hermes.py"))
                 self.assertEqual(archive.read(packaged_name), (helpers / binary).read_bytes())
                 self.assertEqual((archive.getinfo(packaged_name).external_attr >> 16) & 0o777, 0o755)
 

@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import re
+import shutil
 import subprocess
 import sys
 import zipfile
@@ -158,6 +159,24 @@ def check_dependencies(wheels):
                 raise RuntimeError(f"Hermes's current Python has {requirement.name} {version}, but the connector needs {requirement}; no packages were changed")
 
 
+def install_wheels(wheels):
+    """Keep the exact interpreter target, including uv environments without pip."""
+    assets = [str(wheels[name]) for name in EXPECTED_PACKAGES]
+    environment = {key: value for key, value in os.environ.items()
+                   if not key.upper().startswith(("PIP_", "UV_")) and key not in {"VIRTUAL_ENV", "CONDA_PREFIX"}}
+    environment["PIP_CONFIG_FILE"] = os.devnull
+    if importlib.util.find_spec("pip") is not None:
+        command = [sys.executable, "-m", "pip", "--isolated", "install", "--disable-pip-version-check", "--no-input",
+                   "--no-index", "--no-deps", "--prefix", str(Path(sys.prefix).resolve()), "--force-reinstall", *assets]
+    else:
+        uv = shutil.which("uv")
+        if not uv:
+            raise RuntimeError("This Hermes Python has no pip and uv was not found. Install uv or enable pip in this same interpreter, then retry")
+        command = [uv, "--no-config", "pip", "install", "--python", sys.executable,
+                   "--no-index", "--no-deps", "--reinstall", *assets]
+    subprocess.run(command, check=True, env=environment)
+
+
 def main(argv=None):
     utf8_output()
     cli = argparse.ArgumentParser(description=__doc__)
@@ -172,17 +191,8 @@ def main(argv=None):
             return 0
         constants, _ = ensure_hermes()
         check_dependencies(wheels)
-        if importlib.util.find_spec("pip") is None:
-            raise RuntimeError("This Hermes Python has no pip module; enable pip in that same environment, then retry")
         print(json.dumps({"python": sys.executable, "hermes_source": str(Path(constants.__file__).resolve())}, ensure_ascii=False))
-        command = [sys.executable, "-m", "pip", "--isolated", "install", "--disable-pip-version-check", "--no-input",
-                   "--no-index", "--no-deps", "--prefix", str(Path(sys.prefix).resolve()),
-                   "--force-reinstall", *(str(wheels[name]) for name in EXPECTED_PACKAGES)]
-        # Ambient PIP_TARGET/PIP_USER/config must not redirect a correct Hermes
-        # interpreter into another installation location.
-        environment = {key: value for key, value in os.environ.items() if not key.upper().startswith("PIP_")}
-        environment["PIP_CONFIG_FILE"] = os.devnull
-        subprocess.run(command, check=True, env=environment)
+        install_wheels(wheels)
         # A fresh interpreter avoids reporting modules cached before installation.
         probe = ("import importlib.metadata as m; "
                  f"expected = {package_versions!r}; "

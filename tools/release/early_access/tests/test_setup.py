@@ -28,6 +28,7 @@ sys.path.insert(0, str(WORKSPACE / "agent-comm-platform" / "agent-comm" / "pytho
 sys.path.insert(0, str(WORKSPACE / "agent-comm-platform" / "agent-comm" / "connectors" / "hermes-platform"))
 import install
 import configure_hermes
+import onboard_hermes
 from agent_comm_runtime.remote import RemoteBridge, hermes_principal
 
 TEST_PACKAGES = {"agent-comm-runtime": "0.1.0", "hermes-platform-agent-comm": "1.3.0"}
@@ -106,6 +107,7 @@ class TestBundleInstaller(unittest.TestCase):
     def test_installs_only_with_current_python_and_neutralizes_pip_target(self):
         fake_constants = type("Constants", (), {"__file__": str(self.root / "fake-hermes" / "hermes_constants.py")})
         with patch.object(install, "ensure_hermes", return_value=(fake_constants, None)), \
+             patch.object(install.importlib.util, "find_spec", return_value=object()), \
              patch.object(install.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run, \
              patch.dict(os.environ, {"PIP_TARGET": str(self.root / "wrong-environment"), "PIP_USER": "1"}), \
              redirect_stdout(io.StringIO()):
@@ -119,6 +121,30 @@ class TestBundleInstaller(unittest.TestCase):
         self.assertEqual(invocation.kwargs["env"]["PIP_CONFIG_FILE"], os.devnull)
         self.assertEqual(run.call_args_list[1].args[0][0], sys.executable)
         self.assertFalse((self.root / "wrong-environment").exists())
+
+    def test_uv_environment_without_pip_installs_into_exact_interpreter(self):
+        _, wheels = install.verify_bundle(self.root)
+        with patch.object(install.importlib.util, "find_spec", return_value=None), \
+             patch.object(install.shutil, "which", return_value="/tools/uv"), \
+             patch.object(install.subprocess, "run") as run, \
+             patch.dict(os.environ, {"UV_PYTHON": "/wrong/python", "UV_TARGET": "/wrong/target", "PIP_TARGET": "/wrong/pip", "VIRTUAL_ENV": "/wrong/venv"}):
+            install.install_wheels(wheels)
+        command = run.call_args.args[0]
+        self.assertEqual(command[:6], ["/tools/uv", "--no-config", "pip", "install", "--python", sys.executable])
+        self.assertIn("--no-index", command)
+        self.assertIn("--no-deps", command)
+        self.assertIn("--reinstall", command)
+        self.assertFalse(any(key.startswith(("UV_", "PIP_")) and key != "PIP_CONFIG_FILE" for key in run.call_args.kwargs["env"]))
+        self.assertNotIn("VIRTUAL_ENV", run.call_args.kwargs["env"])
+
+    def test_missing_both_installers_does_not_install(self):
+        _, wheels = install.verify_bundle(self.root)
+        with patch.object(install.importlib.util, "find_spec", return_value=None), \
+             patch.object(install.shutil, "which", return_value=None), \
+             patch.object(install.subprocess, "run") as run:
+            with self.assertRaisesRegex(RuntimeError, "no pip and uv"):
+                install.install_wheels(wheels)
+        run.assert_not_called()
 
 
 class TestConfigureHermes(unittest.TestCase):
@@ -168,6 +194,7 @@ def atomic_config_write(path, data):
         class Handler(BaseHTTPRequestHandler):
             def do_POST(handler):
                 requests.append(handler.path)
+                handler.rfile.read(int(handler.headers.get("Content-Length", "0")))
                 body = json.dumps({"urn": "urn:hermes:agent:ExistingHelper123", "registered": True}).encode()
                 handler.send_response(200)
                 handler.send_header("Content-Type", "application/json")
@@ -299,6 +326,21 @@ def atomic_config_write(path, data):
         finally:
             bridge.close()
         self.assertIn(console, self.read_config()["platforms"]["agent_comm"]["extra"]["allow_from"])
+
+    def test_onboarding_readiness_rejects_revoked_local_pairing(self):
+        expires = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+        console = "urn:hermes:agent:WebConsole123"
+        code, _, error = self.run_configure("--remote", "--pair-console", console, "--expires", expires)
+        self.assertEqual(code, 0, error)
+        state = {"home": str(self.home), "helper_url": self.url, "agent_urn": "urn:hermes:agent:ExistingHelper123"}
+        grant = {"console_urn": console, "expires_at": expires, "methods": configure_hermes.PAIR_METHODS}
+        self.assertTrue(onboard_hermes.pairing_matches(state, grant))
+        bridge = RemoteBridge(self.home / "agent-comm/remote.sqlite3", None, state["agent_urn"])
+        try:
+            bridge.revoke(console)
+        finally:
+            bridge.close()
+        self.assertFalse(onboard_hermes.pairing_matches(state, grant))
 
     def test_web_actions_require_explicit_repair_and_unpaired_configuration_preserves_existing_grant(self):
         expires = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()

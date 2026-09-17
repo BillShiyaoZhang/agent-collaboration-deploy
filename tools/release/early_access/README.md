@@ -2,7 +2,7 @@
 
 包内的 `SHA256SUMS.json` 记录本次发布标识、runtime 和 Hermes connector 的确切版本与文件校验值。安装脚本核对这些版本后才安装。
 
-本指南适用于包含 2026-09-17 Agent / Web 能力一致性修复的接入包。安装前核对包内 `SHA256SUMS.json` 与下载目录的 `release-manifest.json`；旧包中的脚本不支持本文新增的配对参数。
+本指南适用于 `2026-09-18-onboarding` 及后续配套发布。安装前核对包内 `SHA256SUMS.json` 与下载目录的 `release-manifest.json`；旧包不包含下方自动接入入口。
 
 ## 先下载并解压
 
@@ -14,11 +14,35 @@
 - [macOS Apple 芯片接入包](https://agent-communication.online/downloads/agent-comm-early-access-macos-arm64.zip)
 - [下载文件校验清单](https://agent-communication.online/downloads/release-manifest.json)
 
-将 ZIP 解压到准备长期保留的位置，打开终端并进入解压后的包目录，再执行下方命令。该目录应包含 `install.py`、`configure_hermes.py`、本系统的 helper、两个 wheel 和校验文件。GitHub 的 `tools/release/early_access` 目录只有脚本源码，不能代替完整接入包。
+将 ZIP 解压，打开终端并进入解压后的包目录，再执行下方命令。该目录应包含 `onboard_hermes.py`、`install.py`、`configure_hermes.py`、本系统的 helper、两个 wheel 和校验文件。GitHub 的 `tools/release/early_access` 目录只有脚本源码，不能代替完整接入包。
 
 首次设置仍需要本机安装和配置权限。不熟悉这些操作时，可以把本页交给有安装能力的 agent 或协助者，先核对环境与配置计划。预编译接入包无需自己安装 Go 编译器；交叉编译与文件校验不等于所有系统上的真实 Hermes 组合都已验证，请同时阅读该版本的发布说明。
 
 本包只含一个系统对应的 helper、两个配套 wheel、安装/配置脚本与校验清单。Web 地址为 https://agent-communication.online/dashboard 。其它系统请换用对应下载包，不要执行不匹配的 helper。
+
+## 新 Hermes：自动接入
+
+让已能正常聊天并操作本机终端的 Hermes 读取本页，下载匹配系统的完整 ZIP，解压后执行：
+
+```sh
+python3 onboard_hermes.py
+```
+
+Windows 使用可用的 `python` 命令；也可以直接使用 Hermes 的 Python 路径。入口会从当前解释器或 `hermes` 启动器识别实际 Hermes Python，保留 `HERMES_HOME` 指定的 profile。明确选择其他安装或 profile 时使用 `--python /path/to/hermes/venv/bin/python --hermes-home /path/to/profile`。不会把组件装进另一个通用 Python；uv 创建的无 pip 环境会自动使用 `uv pip --python`，无需手工补装 pip。
+
+脚本校验并把接入包保存到该 profile 的 `agent-comm/releases/`，复用或初始化该 profile 的独立 helper 身份，启动并签名注册。它返回 `agent_urn` 和 `claim_url`，并启动独立后台任务。**由已经登录 Web 的主人或其授权助手打开这个链接，在网页确认连接即可**。无需复制控制台 URN、编写到期时间，或再向 Hermes 发配对命令。
+
+链接在 30 分钟内有效，默认申请 7 天的状态读取与 Hermes 对话权限；网页展示确切范围和到期时间。网页确认后，后台任务验证该控制台签名、身份、原始请求和权限范围，备份并合并配置、安装待办插件，再使用 Hermes 的真实 CLI 启动 Gateway。只有探测到这个 profile 的存活 Gateway 和 `agent_comm` 已连接，才通知网页本机配置完成。最后在 Web 发一条消息并检查真正回复及完成状态，才能确认模型往返成功。
+
+如需网页联系人操作、共享已读及协作处理，在首次命令中显式加入 `--allow-web-actions`。该权限也会出现在网页确认中。重新运行不会自动扩展既有配对；已有手工接入的身份继续使用下方升级和配置步骤，自动入口不会替换它。
+
+安装终端关闭后，helper 和配对任务继续运行；瞬时网络和 Gateway 启动失败会在票据窗口内重试。macOS 优先安装 profile 专属的 launchd helper 服务，Gateway 使用 Hermes 自己的服务管理；缺少服务管理器时使用独立后台进程和持久日志。这个 fallback 不保证设备重启后自动恢复。查询本机状态：
+
+```sh
+python3 onboard_hermes.py --status
+```
+
+状态和恢复记录保存在 `PROFILE/agent-comm/onboarding.json`，轮询凭据仅保存在本机权限受限的文件中；不要上传该文件。日志在 `PROFILE/agent-comm/logs/`。票据过期后重跑自动入口即可创建新链接，原身份和收件箱会保留。已撤销或到期的配对不会被当作仍有效的成功连接。
 
 ## 已有客户端升级
 
@@ -41,7 +65,7 @@ python install.py --check-only
 python install.py
 ```
 
-第一条仅校验文件与 wheel；第二条使用当前解释器安装包内 wheel。已有 aiohttp 等宿主依赖需满足提示版本，不联网自动替换其它宿主依赖。保留你的原密钥、mailbox 与数据库。
+第一条仅校验文件与 wheel；第二条使用当前解释器安装包内 wheel，无 pip 的 Hermes venv 自动使用已有 uv。已有 aiohttp 等宿主依赖需满足提示版本，不联网自动替换其它宿主依赖。保留你的原密钥、mailbox 与数据库。
 
 ## 2. 运行 helper
 
