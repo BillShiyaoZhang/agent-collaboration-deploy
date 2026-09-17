@@ -25,6 +25,7 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 WORKSPACE = SCRIPTS.parents[2]
 sys.path.insert(0, str(SCRIPTS))
 sys.path.insert(0, str(WORKSPACE / "agent-comm-platform" / "agent-comm" / "python"))
+sys.path.insert(0, str(WORKSPACE / "agent-comm-platform" / "agent-comm" / "connectors" / "hermes-platform"))
 import install
 import configure_hermes
 from agent_comm_runtime.remote import RemoteBridge, hermes_principal
@@ -165,6 +166,13 @@ def atomic_config_write(path, data):
         self.requests = []
         requests = self.requests
         class Handler(BaseHTTPRequestHandler):
+            def do_POST(handler):
+                requests.append(handler.path)
+                body = json.dumps({"urn": "urn:hermes:agent:ExistingHelper123", "registered": True}).encode()
+                handler.send_response(200)
+                handler.send_header("Content-Type", "application/json")
+                handler.end_headers()
+                handler.wfile.write(body)
             def do_GET(handler):
                 requests.append(handler.path)
                 body = json.dumps({"urn": "urn:hermes:agent:ExistingHelper123", "status": "running"}).encode()
@@ -195,7 +203,8 @@ def atomic_config_write(path, data):
         self.server.server_close()
         self.thread.join(2)
         self.environment.stop()
-        sys.path.remove(str(self.source))
+        if str(self.source) in sys.path:
+            sys.path.remove(str(self.source))
         for key in list(sys.modules):
             if key == "hermes_constants" or key.startswith("hermes_cli") or key.startswith("gateway"):
                 sys.modules.pop(key)
@@ -220,7 +229,8 @@ def atomic_config_write(path, data):
         self.assertEqual(config["credentials"], self.original["credentials"])
         self.assertEqual(config["platforms"]["telegram"], self.original["platforms"]["telegram"])
         self.assertEqual(config["plugins"]["entries"], self.original["plugins"]["entries"])
-        self.assertEqual(config["plugins"]["enabled"], ["other_plugin", "agent_comm"])
+        self.assertEqual(config["plugins"]["enabled"], ["other_plugin", "agent_comm", "agent-comm-attention"])
+        self.assertTrue((self.home / "plugins/agent-comm-attention/desktop/plugin.js").is_file())
         platform = config["platforms"]["agent_comm"]
         self.assertNotIn("allow_from", platform)
         self.assertEqual(platform["extra"]["allow_from"], ["urn:agent-comm:agent:OldPeer", "urn:hermes:agent:ExistingWebPeer456"])
@@ -244,6 +254,30 @@ def atomic_config_write(path, data):
         self.assertEqual(self.config_path.read_bytes(), self.original_bytes)
         self.assertEqual(list(self.home.glob("config.yaml.agent-comm-backup-*")), [])
         self.assertFalse((self.home / "agent-comm").exists())
+        self.assertFalse((self.home / "plugins").exists())
+        self.assertEqual(self.requests, ["/info"])
+
+    def test_companion_upgrade_preserves_old_plugin_and_is_idempotent(self):
+        target = self.home / "plugins/agent-comm-attention"
+        target.mkdir(parents=True)
+        (target / "custom.txt").write_text("retain local customization")
+        self.assertEqual(configure_hermes.install_attention_companion(self.home), target)
+        backups = list(target.parent.glob(".agent-comm-attention-backup-*"))
+        self.assertEqual(len(backups), 1)
+        self.assertEqual((backups[0] / "custom.txt").read_text(), "retain local customization")
+        self.assertTrue((target / "desktop/plugin.js").is_file())
+        configure_hermes.install_attention_companion(self.home)
+        self.assertEqual(list(target.parent.glob(".agent-comm-attention-backup-*")), backups)
+
+    def test_failed_registration_leaves_configuration_and_pairing_untouched(self):
+        expires = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+        with patch.object(configure_hermes, "ensure_platform_registration", side_effect=OSError("platform offline")):
+            code, _, error = self.run_configure("--remote", "--pair-console", "urn:hermes:agent:WebConsole123", "--expires", expires)
+        self.assertEqual(code, 2)
+        self.assertIn("platform offline", error)
+        self.assertEqual(self.config_path.read_bytes(), self.original_bytes)
+        self.assertFalse((self.home / "agent-comm").exists())
+        self.assertEqual(list(self.home.glob("config.yaml.agent-comm-backup-*")), [])
 
     def test_remote_alone_does_not_pair_but_explicit_console_does(self):
         self.assertEqual(self.run_configure("--remote")[0], 0)
@@ -253,6 +287,7 @@ def atomic_config_write(path, data):
         console = "urn:hermes:agent:WebConsole123"
         code, _, error = self.run_configure("--remote", "--pair-console", console, "--expires", expires)
         self.assertEqual(code, 0, error)
+        self.assertIn("/api/v1/platform/register", self.requests)
         bridge = RemoteBridge(path, None, "urn:hermes:agent:ExistingHelper123")
         try:
             pairing = bridge.pairings()[0]
@@ -269,7 +304,8 @@ def atomic_config_write(path, data):
         expires = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
         console = "urn:hermes:agent:WebConsole123"
         pair_args = ("--remote", "--pair-console", console, "--expires", expires)
-        self.assertEqual(self.run_configure(*pair_args)[0], 0)
+        code, _, error = self.run_configure(*pair_args)
+        self.assertEqual(code, 0, error)
         path = self.home / "agent-comm/remote.sqlite3"
 
         def current_pairing():

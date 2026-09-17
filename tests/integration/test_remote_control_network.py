@@ -74,7 +74,7 @@ api:
         lease = store.begin_confirmation(prepared["approval_id"], owner)
         store.finish_confirmation(prepared["approval_id"], lease["token"], owner, "同意")
         foreign_owner = "another-local-owner|native-session"
-        foreign_contact = store.prepare_contact("foreign-contact", ["其他账号的联系人"], agent["urn"], foreign_owner)
+        foreign_contact = store.prepare_contact("foreign-contact", ["其他账号的联系人"], console["urn"], foreign_owner)
         foreign_lease = store.begin_confirmation(foreign_contact["approval_id"], foreign_owner)
         store.finish_confirmation(foreign_contact["approval_id"], foreign_lease["token"], foreign_owner, "同意")
         bridge = RemoteBridge(folder / "remote.sqlite3", store, agent["urn"])
@@ -246,7 +246,7 @@ api:
 
         # Approval responses are supported only through an explicitly scoped
         # local pairing, and that grant never extends to another owner's work.
-        remote_pending = store.prepare_contact("remote-approved", ["远程明确确认的联系人"], agent["urn"], owner)
+        remote_pending = store.prepare_contact("remote-approved", ["远程明确确认的联系人"], console["urn"], owner)
         native_lease = store.begin_confirmation(remote_pending["approval_id"], owner)
         approval_params = {"approval_id": remote_pending["approval_id"], "decision": "approve"}
         own_before = store.state(owner)

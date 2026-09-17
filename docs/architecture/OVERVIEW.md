@@ -14,7 +14,7 @@
 | Web 工作台 | Web 登录、控制台身份、账户连接、已认证数据的加密持久副本、会话恢复、主动同步，以及已获准的联系人添加与审批回答；独立的有限期 RPC 密文缓存 | 不自行扩大配对权限，不在后台发送会话或批准事项，不生成模拟业务结果 |
 | 官网静态页面（Web 仓库 `site/`） | 产品介绍、项目关系、接入引导；由 nginx 在 `/` 直接提供 | 不依赖 Platform 或 Next.js 进程，不处理登录和业务操作 |
 
-Web 中添加 agent 只是连接记录。真正的远程访问权由 agent 侧配对赋予，绑定控制台 URN、明确方法范围、主人主体和到期时间。即使有人知道 agent 的 URN，也不能因此查询其联系人或任务。
+Web 中添加 agent 建立连接记录及控制台身份；尚未注册的 URN 可保存为待连接。本机配对脚本先通过 loopback helper 请求签名注册，再写入配对。真正的远程访问权由 agent 侧配对赋予，绑定控制台 URN、明确方法范围、主人主体和到期时间。即使有人知道 agent 的 URN，也不能因此查询其联系人或任务。
 
 ## 运行结构与边界
 
@@ -70,9 +70,13 @@ Agent 侧 RemoteBridge 使用本地配对与持久请求记录：
 4. 从 agent 侧读取事实或提交真实会话工作；保存结果后通过 helper 回传。
 5. 返回消息被 helper 接受后再 ACK 原请求；故障重试保留原响应。
 
-当前读取方法为 `capabilities`、`contacts.list`、`collaboration.state`、`inbox.list`、`attention.list`，另有显式授权的 `contacts.add`、`approval.respond`，以及 Hermes 实现的 `conversation.send` / `conversation.get`。所有方法需要本机明确配对，旧配对不自动扩大。独立 daemon 不宣称具备 Hermes 会话能力。`conversation.send` 返回 submitted 仅代表已提交，最终结果由 conversation.get 从 agent 侧读取。
+当前读取方法为 `capabilities`、`contacts.list`、`contacts.requests`、`collaboration.state`、`inbox.list`、`attention.list`，写方法包括 `contacts.add`、`contacts.respond`、`messages.send`、`inbox.mark_read`、`approval.respond`，以及 Hermes 实现的 `conversation.send` / `conversation.get` 和 `collaboration.execute`。所有方法需要本机明确配对，旧配对不自动扩大。独立 daemon 不宣称具备 Hermes 会话能力。`conversation.send` 返回 submitted 仅代表已提交，最终结果由 conversation.get 从 agent 侧读取。
 
-`contacts.add` 将用户确认的联系人 ID、别名和 URN 绑定写入 Agent Store，无需模型调用。`approval.respond` 只回答 agent 已生成的具体审批；校验主体、期限、撤销与内容版本后复用 agent 的审批状态转移，不直接发消息或执行外部工具。Web 从 agent 同步联系人、审批和事项结果，后台 worker 不自动调用这两个写方法。新增能力需要发布匹配的 Agent/runtime 和 Web，并在本机显式更新配对，操作见[安装包配对说明](../../tools/release/early_access/README.md#4-配对远程-web)。
+`contacts.add` 在 Agent Store 保存用户确认的联系人映射并持久排队好友请求；对方收到后通过 `contacts.respond` 接受或拒绝。只有收到接受回执或本人接受对方请求后，通讯录才显示 `connected`；旧的单边映射显示 `unverified`。helper 的传输 ACK 表示持久收取，不等于主人已经阅读或接受。
+
+`messages.send` 与本机工具复用同一个 agent outbox；`inbox.mark_read` 写 agent 侧已读记录并结束对应提醒，Web 通过后续快照同步。陌生消息和好友请求交给主人查看，不自动成为宿主执行指令。好友 presence 由本机 helper 验证对端注册签名，30 秒续写心跳、90 秒在线期限；网络错误显示未知。注册记录的长期 TTL 不表示在线。
+
+`collaboration.execute` 复用 Hermes 的完整 Runtime 工具入口；已配对 Web 聊天回合通过宿主绑定的真实上下文执行工具，每次校验配对有效期和权限。模型不能代替本人确认；`approval.respond` 将 Web 中的明确决定写回 agent 已生成的具体审批。Web 只保存 agent 返回结果与显示设置；后台同步不自动调用写方法。新增能力需要发布匹配的 Agent/runtime 和 Web，并在本机显式更新配对，操作见[安装包配对说明](../../tools/release/early_access/README.md#4-配对远程-web)。
 
 ## Web 持久副本与主动同步
 

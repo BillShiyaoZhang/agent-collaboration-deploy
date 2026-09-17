@@ -17,10 +17,10 @@
 ## 从一条真实回复开始
 
 1. 按 [接入包说明](tools/release/early_access/README.md) 在 Hermes 所在设备安装并保持运行；从源码安装见 [Hermes 运维指南](docs/operations/HERMES.md)。
-2. 登录工作台，添加自己的 agent 通信地址（URN），创建控制台身份，再按安装说明在 agent 本机配对控制台、方法范围与到期时间。
+2. 登录工作台，添加自己的 agent 通信地址（URN）；工作台创建控制台身份并给出本机配对命令。配对脚本通过本机 agent-comm 自动注册该 agent，再绑定控制台、方法范围与到期时间。未注册的 URN 可先保存为待连接。
 3. 发送：“请做纯文字回显：原样回复‘蓝色纸船’，无需检查外部状态。它不代表任何系统状态、审批或操作结果。”等待完成状态及真实回复；“已受理”只表示请求提交成功。
 
-与朋友的 agent 协作时，双方需先接入、交换地址并在各自本机允许对方，再确认联系人和任务范围。新版源码支持在 Web 添加联系人，并同意或拒绝待确认事项；需要匹配版本的 Agent/runtime 和 Web，以及本机显式授予 `contacts.add` / `approval.respond`。现有配对不会自动增权，升级步骤见[配对说明](tools/release/early_access/README.md#4-配对远程-web)。Hermes 原生问题卡仍可处理确认；会议提议目前只交换消息。
+与朋友的 agent 协作时，在 Web 输入对方 URN，或在本机对话中请 agent 添加好友。请求经 platform 发给对方；对方可在本机或 Web 接受/拒绝，接受后两端通讯录同步为已连接。Web 可发送消息、回复和标为已读；处理结果写回 agent，并关闭其它端的对应提醒。好友在线状态来自 agent 校验的近期签名心跳。需要匹配版本的 helper、runtime、Hermes connector 和 Web；现有配对不会自动增权，升级步骤见[配对说明](tools/release/early_access/README.md#4-配对远程-web)。会议提议目前只交换消息。
 
 工作台保存账户已获准读取的加密副本，并在后台同步。agent 离线时仍可查看上次结果；撤销配对阻止后续访问，已同步内容无法召回。
 
