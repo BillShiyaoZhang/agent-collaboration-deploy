@@ -27,12 +27,13 @@ python -m pip wheel --no-deps --no-build-isolation agent-comm-platform/agent-com
 python -m pip wheel --no-deps --no-build-isolation agent-comm-platform/agent-comm/connectors/hermes-platform --wheel-dir agent-comm-platform/agent-comm/connectors/hermes-platform/dist
 ```
 
-在构建环境安装所需的 setuptools/wheel。helper 从 SDK 的 `./cmd/helper` 构建；按目标设置 Go 的 `GOOS`/`GOARCH`，将三份产物放入 `build/early-access/`（或通过 `--helper-dir` 指定）：
+在构建环境安装所需的 setuptools/wheel。helper 从 SDK 的 `./cmd/helper` 构建；按目标设置 Go 的 `GOOS`/`GOARCH`，将四份产物放入 `build/early-access/`（或通过 `--helper-dir` 指定）：
 
 | 目标 | 构建输入文件名 | ZIP 内执行文件名 |
 | --- | --- | --- |
 | windows / amd64 | `agent-comm-helper.exe` | `agent-comm-helper.exe` |
 | linux / amd64 | `agent-comm-helper-linux-amd64` | `agent-comm-helper` |
+| darwin / amd64 | `agent-comm-helper-darwin-amd64` | `agent-comm-helper` |
 | darwin / arm64 | `agent-comm-helper-darwin-arm64` | `agent-comm-helper` |
 
 ```sh
@@ -50,6 +51,14 @@ python tools/release/build_early_access.py --release RELEASE_ID --invitation /pa
 ```
 
 省略该参数时，本次清单不包含 PDF。重复使用输出目录时，以本次 `release-manifest.json` 列出的文件为发布范围；历史残留文件不代表本次发布产物。建议每次使用独立输出目录，再按清单同步到下载服务。
+
+## GitHub 正式发布
+
+SDK 的 Release 工作流发布 helper、两个 wheel、四个平台接入包、源码与文档 ZIP。先提交 SDK，再由内向外更新 Platform 和本仓库的子模块引用，全部推送成功后才推新的 SDK 语义版本标签。标签触发时会解析本仓库 `main` 的确切提交，并拒绝其 SDK 引用与版本标签不一致的组合。
+
+从 Actions 手动重跑时必须选择确切的版本标签和本仓库提交；不能将 `main` 当版本号，也不要移动已发布标签。版本说明放在 SDK 的 `docs/releases/TAG.md`。工作流通过测试、版本一致性、wheel/source 与完整包校验后才发布。
+
+GitHub 的 `release-manifest.json` 是 SDK 下载器使用的资产清单；`early-access-manifest.json` 是安装包/源码 ZIP 清单。同步官网时使用 GitHub 已验证的相同 ZIP，并把 `early-access-manifest.json` 作为官网 `downloads/release-manifest.json`，不要用 SDK 清单覆盖官网清单。
 
 ## 测试
 

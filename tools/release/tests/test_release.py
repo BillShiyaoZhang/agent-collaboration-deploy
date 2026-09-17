@@ -134,7 +134,7 @@ class TestReleases(unittest.TestCase):
         helpers = root / "build/helpers"
         helpers.mkdir(parents=True)
         for binary, _ in build_early_access.VARIANTS.values():
-            (helpers / binary).write_bytes(b"fixture helper; never executed")
+            (helpers / binary).write_bytes(f"fixture {binary}; never executed".encode())
         packages = build_early_access.release_packages
         verify = build_early_access.verify_wheels
         with patch.object(build_early_access, "ROOT", root), patch.object(build_early_access, "SDK", sdk), \
@@ -144,10 +144,16 @@ class TestReleases(unittest.TestCase):
             build_early_access.main(["--release", "fixture", "--helper-dir", str(helpers)])
         report = json.loads((root / "downloads/release-manifest.json").read_text())
         self.assertEqual(report["packages"], versions)
-        self.assertEqual(len(report["files"]), 4)
+        self.assertEqual(len(report["files"]), len(build_early_access.VARIANTS) + 1)
         self.assertFalse(any(name.endswith(".pdf") for name in report["files"]))
-        with zipfile.ZipFile(root / "downloads/agent-comm-early-access-windows-amd64.zip") as archive:
-            self.assertEqual(json.loads(archive.read("SHA256SUMS.json"))["packages"], versions)
+        for platform_name, (binary, packaged_name) in build_early_access.VARIANTS.items():
+            with self.subTest(platform=platform_name), zipfile.ZipFile(
+                    root / f"downloads/agent-comm-early-access-{platform_name}.zip") as archive:
+                manifest = json.loads(archive.read("SHA256SUMS.json"))
+                self.assertEqual(manifest["packages"], versions)
+                self.assertEqual(manifest["platform"], platform_name)
+                self.assertEqual(archive.read(packaged_name), (helpers / binary).read_bytes())
+                self.assertEqual((archive.getinfo(packaged_name).external_attr >> 16) & 0o777, 0o755)
 
 
 if __name__ == "__main__":

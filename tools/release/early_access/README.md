@@ -10,6 +10,7 @@
 
 - [Windows 64 位 x86 接入包](https://agent-communication.online/downloads/agent-comm-early-access-windows-amd64.zip)
 - [Linux 64 位 x86 接入包](https://agent-communication.online/downloads/agent-comm-early-access-linux-amd64.zip)
+- [macOS Intel 芯片接入包](https://agent-communication.online/downloads/agent-comm-early-access-macos-amd64.zip)
 - [macOS Apple 芯片接入包](https://agent-communication.online/downloads/agent-comm-early-access-macos-arm64.zip)
 - [下载文件校验清单](https://agent-communication.online/downloads/release-manifest.json)
 

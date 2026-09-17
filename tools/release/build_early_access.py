@@ -14,6 +14,7 @@ SOURCES = (SDK / "python", SDK / "connectors/hermes-platform")
 VARIANTS = {
     "windows-amd64": ("agent-comm-helper.exe", "agent-comm-helper.exe"),
     "linux-amd64": ("agent-comm-helper-linux-amd64", "agent-comm-helper"),
+    "macos-amd64": ("agent-comm-helper-darwin-amd64", "agent-comm-helper"),
     "macos-arm64": ("agent-comm-helper-darwin-arm64", "agent-comm-helper"),
 }
 
@@ -66,7 +67,7 @@ def main(argv=None):
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument("--release", help="Release identifier; defaults to today's UTC date")
     cli.add_argument("--helper-dir", type=Path, default=ROOT / "build/early-access",
-                     help="Directory containing the three prebuilt helper executables")
+                     help="Directory containing the four prebuilt helper executables")
     cli.add_argument("--output-dir", type=Path, default=ROOT / "downloads")
     cli.add_argument("--invitation", type=Path, help="Optional reviewed PDF to copy into this release")
     args = cli.parse_args(argv)
