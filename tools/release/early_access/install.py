@@ -199,7 +199,9 @@ def main(argv=None):
                  "assert all(m.version(name) == version for name, version in expected.items()); "
                  "import agent_comm_runtime.remote, hermes_platform_agent_comm")
         subprocess.run([sys.executable, "-c", probe], check=True, cwd=root)
-        print("Installed the verified wheels into this Hermes Python. Next run configure_hermes.py with this same executable.")
+        print("Installed the verified wheels into this Hermes Python. This installs Python components only; it does not connect Hermes to Web.")
+        print("For a new Web connection, run onboard_hermes.py from this bundle with this same Hermes Python. It starts the helper, returns the Web claim_url, and completes pairing and Gateway startup automatically after Web confirmation.")
+        print("Current guide: https://agent-communication.online/agent-install.md . Existing manually managed identities must retain their helper data, URN and Hermes profile; follow the existing-client steps instead of replacing that identity.")
         return 0
     except (ValueError, RuntimeError, OSError, zipfile.BadZipFile, subprocess.CalledProcessError, ImportError) as exc:
         print(f"Installation stopped: {exc}", file=sys.stderr)

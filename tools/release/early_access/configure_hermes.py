@@ -222,6 +222,9 @@ def configure(args):
             raise RuntimeError(f"Configuration was saved at {config_path} (backup: {backup}), but local pairing could not be confirmed; inspect the local pairing state before retrying") from exc
     print(json.dumps({"status": "configured", "config": str(config_path), "backup": str(backup) if backup else None,
                       "paired_console": args.pair_console}, ensure_ascii=False))
+    if not args.pair_console:
+        print("Local components configured only: this command did not create or verify a Web pairing. This output is not evidence that Web is connected.")
+        print("New connections should start with onboard_hermes.py and the current guide at https://agent-communication.online/agent-install.md . If this profile already has a manually configured identity, retain its helper data and URN and follow the existing-client pairing steps; do not replace the identity to rerun onboarding.")
     print("Restart Hermes Gateway and dashboard using their normal controls; reload Desktop to show Agent Comm attention. Keys, mailboxes and existing collaboration data were retained.")
     return plan
 
