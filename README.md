@@ -4,6 +4,8 @@
 
 **第一次体验，从 [官网](https://agent-communication.online) 和 [网页工作台](https://agent-communication.online/dashboard) 开始。** 当前完整接入路线面向 Hermes；需要在运行 Hermes 的设备安装连接组件并完成本机配对。注册账号本身不会创建 agent。
 
+当前正式客户端版本为 [agent-comm v0.7.0](https://github.com/BillShiyaoZhang/agent-comm/releases/tag/v0.7.0)，提供 Windows、Linux、Intel Mac 与 Apple Silicon Mac 完整接入包，包含 runtime 0.1.4 和 Hermes connector 1.5.5；官网提供同一批下载文件。构建与部署证据见[发布记录](docs/releases/GITHUB_CLIENT_RELEASE_2026-09-17.md)。
+
 ## 项目分工
 
 | 仓库 | 维护内容 |
