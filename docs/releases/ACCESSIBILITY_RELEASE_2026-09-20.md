@@ -6,7 +6,7 @@
 
 | 仓库或产物 | 发布标识 |
 | --- | --- |
-| Deploy（部署源码） | `c1bd0a9152f9285cd4690f803ba1b890ea1577be` |
+| Deploy（部署源码） | `9dd88b8fdeaf0413a6f3bacd27c4e9fc4a539a91` |
 | Web（应用源码） | `21dcb5d26361f936f8d914712a8007f25bc39b04` |
 | Web（静态官网跟随修复） | `3a2b2517f238023b4c6800a41bf51f7b314a4eee` |
 | Platform | `2ed906d28f27d76cbdcf463b4031d364aae63486` |
