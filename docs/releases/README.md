@@ -4,6 +4,7 @@
 
 | 日期 | 发布 | 记录内容 |
 | --- | --- | --- |
+| 2026-09-20 | [网站字号与可访问性修复](ACCESSIBILITY_RELEASE_2026-09-20.md) | 字号、键盘焦点、响应式布局、触摸目标及官网静态链接可读性修复 |
 | 2026-09-18 | [Hermes 官网自动接入](HERMES_AUTONOMOUS_ONBOARDING_RELEASE_2026-09-18.md) | 官网接入包 r2、单命令安装、网页一次确认、签名授权与本机后台自动配对 |
 | 2026-09-17 | [agent-comm v0.7.0 正式客户端发布](GITHUB_CLIENT_RELEASE_2026-09-17.md) | GitHub 四平台 helper、完整安装包、Python wheel 与官网同源同步 |
 | 2026-09-17 | [Agent / Web 能力一致性上线](AGENT_WEB_PARITY_RELEASE_2026-09-17.md) | 本机数据权威、好友与消息闭环、跨端已读、在线状态、配套接入包及 Linux 候选验证 |
