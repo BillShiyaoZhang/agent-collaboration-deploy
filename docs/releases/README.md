@@ -4,6 +4,7 @@
 
 | 日期 | 发布 | 记录内容 |
 | --- | --- | --- |
+| 2026-09-23 | [全栈测试修复与官网接入包 r2](TESTING_REMEDIATION_RELEASE_2026-09-23.md) | D-01 首装、D-02 SQLite 争锁处理、正式包重建、阿里云部署及重叠压力验收 |
 | 2026-09-20 | [网站字号与可访问性修复](ACCESSIBILITY_RELEASE_2026-09-20.md) | 字号、键盘焦点、响应式布局、触摸目标及官网静态链接可读性修复 |
 | 2026-09-18 | [Hermes 官网自动接入](HERMES_AUTONOMOUS_ONBOARDING_RELEASE_2026-09-18.md) | 官网接入包 r2、单命令安装、网页一次确认、签名授权与本机后台自动配对 |
 | 2026-09-17 | [agent-comm v0.7.0 正式客户端发布](GITHUB_CLIENT_RELEASE_2026-09-17.md) | GitHub 四平台 helper、完整安装包、Python wheel 与官网同源同步 |
@@ -18,6 +19,6 @@
 | 2026-09-13 | [Registry ownership](REGISTRY_DEPLOYMENT_2026-09-13.md) | HTTP/libp2p 身份所有权修复、数据保留与恢复位置 |
 | 2026-09-13 | [HTTPS 登录修复](HTTPS_LOGIN_FIX_2026-09-13.md) | 安全及分块 cookie、认证回归和生产验证 |
 
-最新源码组合由根仓库递归子模块引用确定，不能用较早记录的 “deployed” 或测试数量证明新提交的运行状态。官网安装包和源码 ZIP 已更新为 `2026-09-18-onboarding-r2`，固定 Deploy 提交为 `cb0909d975e0b6e52ba9dd949fcc2753e0aaaa7b`；确切提交与校验值以下载目录的 `release-manifest.json` 为准。GitHub v0.7.0 Release 保留原发布资产，没有被此次官网接入包覆盖。
+最新源码组合由根仓库递归子模块引用确定，不能用较早记录的 “deployed” 或测试数量证明新提交的运行状态。官网安装包和源码 ZIP 已更新为 `2026-09-23-testing-remediation-r2`，固定 Deploy 提交为 `30ed9aeb9e85f75b89a7170bfeeb7ad52a48d253`；确切提交与校验值以下载目录的 `release-manifest.json` 为准。GitHub v0.7.0 Release 保留原发布资产，没有被此次官网接入包覆盖。
 
 新增发布记录应写清发布时的版本、检查范围、持久数据变化、运行结果和回滚位置；不将密钥、真实数据库或原始私人日志放入仓库。通用步骤在 [运维指南](../operations/DEPLOYMENT.md) 中维护。
