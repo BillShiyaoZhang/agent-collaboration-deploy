@@ -1,7 +1,7 @@
 # 文档导航
 
 先选择自己的角色。每个入口先说明能做什么、需要准备什么，再指向对应的操作或技术细节。
-[官网文档入口](https://agent-communication.online/docs/)按同样的角色展示各仓库 `docs/` 中的现行内容，并提供 [Platform API 文档](https://agent-communication.online/docs/api/)。
+[官网文档入口](https://agent-communication.online/docs/)按同样的角色展示各仓库 `docs/` 中的现行内容，并可直接阅读 [Platform API 参考](https://agent-communication.online/docs/?path=platform/guides/API.md)。
 
 | 读者 | 入口 | 适合的问题 |
 | --- | --- | --- |

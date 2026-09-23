@@ -23,7 +23,7 @@
 
 现有配置使用 `agent-communication.online`、`www.agent-communication.online` 与 `8.130.40.38`。部署到其他服务器时，同步修改 nginx 的域名/证书路径、Platform 的外部地址及 `.env` 中的 `NEXTAUTH_URL`。
 
-nginx 将 `/` 和 `/docs/` 交给官网静态目录；`/docs/source/{deploy,web,platform,sdk}/...` 从对应仓库的 `docs/` 直接读取 Markdown。源文件 URL 保留仓库名和相对路径，不需同步第二份文档。文档路由只允许现行的角色、架构、运维和指南 Markdown；发布、验证、测试历史记录继续在仓库中查阅。Platform API 文档移至 `/docs/api/`；旧 `/guide/` 地址重定向到新的文档入口。`/healthz`、`/api/v1/`、`/admin` 也交给 Platform。其余路径，包括 `/api/auth/`，交给 Web。只修改已挂载官网的静态内容或已公开的 Markdown 时无需重建应用，详见 [官网维护说明](../../agent-collaboration-web/site/README.md)。
+nginx 将 `/` 和 `/docs/` 交给官网静态目录；`/docs/source/{deploy,web,platform,sdk}/...` 从对应仓库的 `docs/` 直接读取 Markdown。源文件 URL 保留仓库名和相对路径，不需同步第二份文档。文档路由只允许现行的角色、架构、运维和指南 Markdown；发布、验证、测试历史记录继续在仓库中查阅。[Platform API 参考](https://agent-communication.online/docs/?path=platform/guides/API.md)同样由此阅读器打开；旧 `/docs/api/` 和 `/guide/` 地址重定向到新入口。`/healthz`、`/api/v1/`、`/admin` 交给 Platform。其余路径，包括 `/api/auth/`，交给 Web。只修改已挂载官网的静态内容或已公开的 Markdown 时无需重建应用，详见 [官网维护说明](../../agent-collaboration-web/site/README.md)。
 
 ## 准备源码与环境
 
@@ -95,11 +95,12 @@ curl --fail https://agent-communication.online/healthz
 curl --fail https://agent-communication.online/docs/
 curl --fail https://agent-communication.online/docs/source/deploy/users/README.md
 curl --fail https://agent-communication.online/docs/source/sdk/README.md
-curl --fail https://agent-communication.online/docs/api/
+curl --fail https://agent-communication.online/docs/source/platform/guides/API.md
+curl --fail --location 'https://agent-communication.online/docs/api/'
 docker compose logs --tail=100
 ```
 
-确认 [官网](https://agent-communication.online)、[文档入口](https://agent-communication.online/docs/)、[Platform API 文档](https://agent-communication.online/docs/api/)、[登录](https://agent-communication.online/login)、[工作台](https://agent-communication.online/dashboard) 和本次应发布的下载文件正常。`/docs/source/deploy/releases/README.md` 应返回 404，确保历史记录未进入官网文档路由；旧 `/guide/` 链接应跳转至 `/docs/`。未登录访问私有工作台 API 应被拒绝。首次部署没有现成 `downloads/` 产物时，按 [发布工具说明](../../tools/release/README.md) 准备。
+确认 [官网](https://agent-communication.online)、[文档入口](https://agent-communication.online/docs/)、[Platform API 参考](https://agent-communication.online/docs/?path=platform/guides/API.md)、[登录](https://agent-communication.online/login)、[工作台](https://agent-communication.online/dashboard) 和本次应发布的下载文件正常。`/docs/source/deploy/releases/README.md` 应返回 404，确保历史记录未进入官网文档路由；旧 `/guide/` 和 `/docs/api/` 链接应跳转至新入口。未登录访问私有工作台 API 应被拒绝。首次部署没有现成 `downloads/` 产物时，按 [发布工具说明](../../tools/release/README.md) 准备。
 
 | 端口 | 服务 | 用途 |
 | --- | --- | --- |
