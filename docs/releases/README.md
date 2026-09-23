@@ -4,6 +4,7 @@
 
 | 日期 | 发布 | 记录内容 |
 | --- | --- | --- |
+| 2026-09-24 | [Platform 系统配置编辑](PLATFORM_CONFIG_EDITOR_2026-09-24.md) | 六项运行参数预览确认、隔离重启验证、生产备份与只读验收 |
 | 2026-09-24 | [Platform 管理操作扩展](PLATFORM_ADMIN_OPERATIONS_2026-09-24.md) | MQ 汇总与分页、单封处置、明确目标策略、生产备份和只读验收 |
 | 2026-09-24 | [Platform 管理台功能与界面更新](PLATFORM_ADMIN_REFRESH_2026-09-24.md) | 管理台响应式改版、运行时数据与策略持久化、生产备份和验收 |
 | 2026-09-23 | [Platform API 文档归并](PLATFORM_API_DOCS_CONSOLIDATION_2026-09-23.md) | 云端 API 契约迁入 Platform `docs/`、中英双语、旧网址兼容跳转及生产复核 |
@@ -24,6 +25,6 @@
 | 2026-09-13 | [Registry ownership](REGISTRY_DEPLOYMENT_2026-09-13.md) | HTTP/libp2p 身份所有权修复、数据保留与恢复位置 |
 | 2026-09-13 | [HTTPS 登录修复](HTTPS_LOGIN_FIX_2026-09-13.md) | 安全及分块 cookie、认证回归和生产验证 |
 
-最新源码组合由根仓库递归子模块引用确定；线上运行提交和镜像须以最近一条**完成核对**的发布记录及服务器实际状态为准。[Platform 管理操作扩展记录](PLATFORM_ADMIN_OPERATIONS_2026-09-24.md)列出当前运行代码指针和镜像；先前的[管理台界面更新记录](PLATFORM_ADMIN_REFRESH_2026-09-24.md)保留上次切换状态。发布记录本身的纯文档提交不代表服务器再次切换应用代码。本次未重发官网安装包；下载版本和校验值以[官网发布清单](https://agent-communication.online/downloads/release-manifest.json)为准。
+最新源码组合由根仓库递归子模块引用确定；线上运行提交和镜像须以最近一条**完成核对**的发布记录及服务器实际状态为准。[Platform 系统配置编辑记录](PLATFORM_CONFIG_EDITOR_2026-09-24.md)列出当前运行代码指针和镜像；先前的[管理操作扩展记录](PLATFORM_ADMIN_OPERATIONS_2026-09-24.md)保留上次切换状态。发布记录本身的纯文档提交不代表服务器再次切换应用代码。本次未重发官网安装包；下载版本和校验值以[官网发布清单](https://agent-communication.online/downloads/release-manifest.json)为准。
 
 新增发布记录应写清发布时的版本、检查范围、持久数据变化、运行结果和回滚位置；不将密钥、真实数据库或原始私人日志放入仓库。通用步骤在 [运维指南](../operations/DEPLOYMENT.md) 中维护。
