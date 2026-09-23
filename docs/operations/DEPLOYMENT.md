@@ -23,7 +23,7 @@
 
 现有配置使用 `agent-communication.online`、`www.agent-communication.online` 与 `8.130.40.38`。部署到其他服务器时，同步修改 nginx 的域名/证书路径、Platform 的外部地址及 `.env` 中的 `NEXTAUTH_URL`。
 
-nginx 将 `/` 和 `/guide/` 交给官网静态目录；`/guide/source/{deploy,web,platform,sdk}/...` 从对应仓库的 `docs/` 直接读取 Markdown。源文件 URL 保留仓库名和相对路径，不需同步第二份文档。文档路由只允许现行的角色、架构、运维和指南 Markdown；发布、验证、测试历史记录继续在仓库中查阅。`/docs` 仍是 Platform 的现有 API 文档入口；`/healthz`、`/api/v1/`、`/admin` 也交给 Platform。其余路径，包括 `/api/auth/`，交给 Web。只修改已挂载官网的静态内容或已公开的 Markdown 时无需重建应用，详见 [官网维护说明](../../agent-collaboration-web/site/README.md)。
+nginx 将 `/` 和 `/docs/` 交给官网静态目录；`/docs/source/{deploy,web,platform,sdk}/...` 从对应仓库的 `docs/` 直接读取 Markdown。源文件 URL 保留仓库名和相对路径，不需同步第二份文档。文档路由只允许现行的角色、架构、运维和指南 Markdown；发布、验证、测试历史记录继续在仓库中查阅。Platform API 文档移至 `/docs/api/`；旧 `/guide/` 地址重定向到新的文档入口。`/healthz`、`/api/v1/`、`/admin` 也交给 Platform。其余路径，包括 `/api/auth/`，交给 Web。只修改已挂载官网的静态内容或已公开的 Markdown 时无需重建应用，详见 [官网维护说明](../../agent-collaboration-web/site/README.md)。
 
 ## 准备源码与环境
 
@@ -92,14 +92,14 @@ docker compose up --build -d
 docker compose ps
 docker exec agent-nginx nginx -t
 curl --fail https://agent-communication.online/healthz
-curl --fail https://agent-communication.online/guide/
-curl --fail https://agent-communication.online/guide/source/deploy/users/README.md
-curl --fail https://agent-communication.online/guide/source/sdk/README.md
 curl --fail https://agent-communication.online/docs/
+curl --fail https://agent-communication.online/docs/source/deploy/users/README.md
+curl --fail https://agent-communication.online/docs/source/sdk/README.md
+curl --fail https://agent-communication.online/docs/api/
 docker compose logs --tail=100
 ```
 
-确认 [官网](https://agent-communication.online)、[文档入口](https://agent-communication.online/guide/)、[登录](https://agent-communication.online/login)、[工作台](https://agent-communication.online/dashboard) 和本次应发布的下载文件正常。`/guide/source/deploy/releases/README.md` 应返回 404，确保历史记录未进入官网文档路由；Platform 原有 `/docs/` 应仍可访问。未登录访问私有工作台 API 应被拒绝。首次部署没有现成 `downloads/` 产物时，按 [发布工具说明](../../tools/release/README.md) 准备。
+确认 [官网](https://agent-communication.online)、[文档入口](https://agent-communication.online/docs/)、[Platform API 文档](https://agent-communication.online/docs/api/)、[登录](https://agent-communication.online/login)、[工作台](https://agent-communication.online/dashboard) 和本次应发布的下载文件正常。`/docs/source/deploy/releases/README.md` 应返回 404，确保历史记录未进入官网文档路由；旧 `/guide/` 链接应跳转至 `/docs/`。未登录访问私有工作台 API 应被拒绝。首次部署没有现成 `downloads/` 产物时，按 [发布工具说明](../../tools/release/README.md) 准备。
 
 | 端口 | 服务 | 用途 |
 | --- | --- | --- |
@@ -122,10 +122,11 @@ git submodule update --init --recursive
 docker compose config --quiet
 docker compose up --build -d
 docker exec agent-nginx nginx -t
-docker exec agent-nginx nginx -s reload
 ```
 
 使用记录的子模块提交；`git submodule update --remote` 会选择另一组源码。现有服务器曾采用按清单部署的源码快照；若工作树有未提交改动，先核对 [对应发布记录](../releases/README.md) 中的清单、镜像和备份，不能直接重置工作树。
+
+修改 nginx 的 Compose 挂载时必须重建 nginx 容器；仅执行 `nginx -s reload` 不会装入新挂载。若组合启动没有重建 nginx，执行 `docker compose up -d --no-deps --force-recreate nginx`，再运行 `docker exec agent-nginx nginx -t`。
 
 若采用文件清单而非完整仓库部署，需同时复制 `deploy/` 下的 nginx 配置及 `docs-source.conf`、Platform 配置、与之匹配的 Compose 文件，以及四仓在对应固定提交的 `docs/` 原文件；启动前检查容器挂载路径。公开目录不能用缺失的目录挂载占位，否则官网文档会静默变成空目录。
 

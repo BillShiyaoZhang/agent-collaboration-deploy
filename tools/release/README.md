@@ -13,7 +13,7 @@ python tools/release/package_web_release.py --release RELEASE_ID
 默认输出 `build/releases/web-release.tar.gz`，可用 `--output` 指定其他位置。包内包括：
 
 - `web/`：完整的 Web 可发布源码快照，含 Web 自身 `docs/`。
-- `docs/`、`agent-comm-platform/docs/`、`agent-comm-platform/agent-comm/docs/`：其余三仓在固定提交的原始文档，供官网 `/guide/source/` 只读挂载；没有另行改写或手工复制 Markdown。
+- `docs/`、`agent-comm-platform/docs/`、`agent-comm-platform/agent-comm/docs/`：其余三仓在固定提交的原始文档，供官网 `/docs/source/` 只读挂载；没有另行改写或手工复制 Markdown。
 - `docker-compose.yml`、`deploy/nginx/nginx.conf`、`deploy/nginx/docs-source.conf`、`deploy/platform/config.yaml`：待审阅的部署配置。
 - `manifest.json`：`mode: full_snapshot`、四仓源提交、逐文件校验值与部署语义。
 
