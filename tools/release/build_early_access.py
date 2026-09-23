@@ -101,7 +101,11 @@ def main(argv=None):
         with tempfile.TemporaryDirectory(prefix="verify-bundle-") as folder:
             with zipfile.ZipFile(destination) as archive:
                 archive.extractall(folder)
-            subprocess.run([sys.executable, str(Path(folder) / "install.py"), "--check-only"], check=True)
+            # Release builders inspect every platform's bytes on one host. This
+            # explicit mode verifies integrity without treating a foreign helper
+            # as installable on the builder's OS.
+            subprocess.run([sys.executable, str(Path(folder) / "install.py"),
+                            "--check-only", "--cross-platform-check"], check=True)
         record(destination)
     source = {}
     for repo in repos:

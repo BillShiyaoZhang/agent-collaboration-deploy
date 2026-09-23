@@ -1,7 +1,8 @@
 """Verify an extracted early-access bundle, then install into THIS Hermes Python.
 
 No profile, key, mailbox or database is modified. --check-only is stdlib-only
-and can be used by a release builder without Hermes installed.
+and can be used without Hermes. Release builders verifying a bundle for a
+different OS/CPU must also pass --cross-platform-check.
 """
 import argparse
 from email.parser import Parser
@@ -12,6 +13,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path, PurePosixPath
+import platform
 import re
 import shutil
 import subprocess
@@ -19,6 +21,18 @@ import sys
 import zipfile
 
 EXPECTED_PACKAGES = ("agent-comm-runtime", "hermes-platform-agent-comm")
+SUPPORTED_PLATFORMS = {"windows-amd64", "linux-amd64", "macos-amd64", "macos-arm64"}
+
+
+def host_platform():
+    system = {"win32": "windows", "linux": "linux", "darwin": "macos"}.get(sys.platform)
+    machine = platform.machine().lower()
+    architecture = ("amd64" if machine in {"amd64", "x86_64"} else
+                    "arm64" if machine in {"arm64", "aarch64"} else None)
+    variant = f"{system}-{architecture}"
+    if variant not in SUPPORTED_PLATFORMS:
+        raise RuntimeError(f"No Agent Comm helper bundle is available for this host: {sys.platform}/{machine}")
+    return variant
 
 
 def utf8_output():
@@ -61,7 +75,7 @@ def wheel_metadata(path):
     return name, metadata
 
 
-def verify_bundle(directory):
+def verify_bundle(directory, *, cross_platform=False):
     root = Path(directory).expanduser().resolve()
     manifest_path = root / "SHA256SUMS.json"
     if manifest_path.is_symlink() or not manifest_path.is_file():
@@ -70,6 +84,13 @@ def verify_bundle(directory):
     files = manifest.get("files") if isinstance(manifest, dict) else None
     if not isinstance(files, dict) or not files:
         raise ValueError("SHA256SUMS.json must contain a nonempty files mapping")
+    variant = manifest.get("platform")
+    if not isinstance(variant, str) or variant not in SUPPORTED_PLATFORMS:
+        raise ValueError("SHA256SUMS.json must declare a supported helper platform")
+    if not cross_platform:
+        actual = host_platform()
+        if variant != actual:
+            raise ValueError(f"The bundle targets {variant}; this host requires {actual}")
     expected_packages = manifest.get("packages")
     if (not isinstance(expected_packages, dict) or set(expected_packages) != set(EXPECTED_PACKAGES)
             or any(not isinstance(version, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.!+_-]*", version)
@@ -87,6 +108,9 @@ def verify_bundle(directory):
                      and path.suffix.lower() in {"", ".exe"}]
     if len(helper_assets) != 1:
         raise ValueError("The bundle must contain exactly one platform helper executable at its root")
+    helper_name = "agent-comm-helper.exe" if variant.startswith("windows-") else "agent-comm-helper"
+    if helper_assets[0].name != helper_name:
+        raise ValueError(f"The {variant} bundle must contain {helper_name}")
     required.add(helper_assets[0].relative_to(root).as_posix())
     wheels = list((root / "wheels").glob("*.whl"))
     if len(wheels) != len(EXPECTED_PACKAGES):
@@ -182,9 +206,13 @@ def main(argv=None):
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument("--bundle-dir", type=Path, default=Path(__file__).resolve().parent)
     cli.add_argument("--check-only", action="store_true", help="Verify checksums and wheel metadata; do not require Hermes or install anything")
+    cli.add_argument("--cross-platform-check", action="store_true",
+                     help="With --check-only, verify a release for another OS/CPU without installing it")
     args = cli.parse_args(argv)
     try:
-        root, wheels = verify_bundle(args.bundle_dir)
+        if args.cross_platform_check and not args.check_only:
+            raise ValueError("--cross-platform-check requires --check-only")
+        root, wheels = verify_bundle(args.bundle_dir, cross_platform=args.cross_platform_check)
         package_versions = {name: wheel_metadata(wheel)[1]["Version"] for name, wheel in wheels.items()}
         print(json.dumps({"status": "bundle_verified", "bundle": str(root), "packages": package_versions}, ensure_ascii=False))
         if args.check_only:

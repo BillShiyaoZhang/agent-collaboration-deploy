@@ -1,5 +1,7 @@
 # 跨仓库验证
 
+完整的环境分层、能力追踪、网页添加联系人用户旅程、Hermes 真实验收和发布门禁见[系统测试方案](../docs/testing/TEST_STRATEGY.md)；两个 Agent 与两边用户的逐步操作见[双 Agent 人在环 Runbook](../docs/testing/TWO_AGENT_HITL_RUNBOOK.md)；按编号执行的测试清单见[测试步骤说明](../docs/testing/TEST_EXECUTION_GUIDE.md)。
+
 本目录放需要组合 SDK/helper 与 Platform 的检查；组件自身的单元测试留在组件仓库。
 
 - [远程控制链路](integration/test_remote_control_network.py)：真实本地 Registry/MQ/helper 与 Python runtime，

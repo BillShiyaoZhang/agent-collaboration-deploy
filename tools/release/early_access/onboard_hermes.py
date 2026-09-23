@@ -29,6 +29,10 @@ from install import ensure_hermes, utf8_output, verify_bundle
 
 PROTOCOL = "agent-comm-onboarding/v1"
 DEFAULT_PLATFORM = "https://agent-communication.online"
+TICKET_SECONDS = 30 * 60
+# The Web server issues a 30-minute ticket using its own clock. Keep the
+# client-side bound finite while allowing a few seconds of clock skew.
+TICKET_CLOCK_SKEW_SECONDS = 10
 
 
 def emit(**data):
@@ -128,6 +132,19 @@ def public_platform(value):
     if parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path.rstrip("/"):
         raise ValueError("The public platform must be a plain origin without credentials or a path")
     return value.rstrip("/")
+
+
+def ticket_deadline(expires_at, *, now=None):
+    if not isinstance(expires_at, str):
+        raise ValueError("Invalid short-lived pairing deadline")
+    parsed = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+    if parsed.utcoffset() is None:
+        raise ValueError("Invalid short-lived pairing deadline")
+    deadline = parsed.timestamp()
+    now = time.time() if now is None else now
+    if not now < deadline <= now + TICKET_SECONDS + TICKET_CLOCK_SKEW_SECONDS:
+        raise ValueError("Invalid short-lived pairing deadline")
+    return deadline
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -552,9 +569,7 @@ def onboard(args):
             parsed = urlsplit(claim_url)
             if (parsed.scheme, parsed.netloc) != (urlsplit(origin).scheme, urlsplit(origin).netloc) or not parsed.path.startswith("/connect/") or parsed.query or parsed.fragment:
                 raise ValueError("The claim page must remain on the requested platform")
-            deadline = datetime.fromisoformat(response["expires_at"].replace("Z", "+00:00")).timestamp()
-            if not time.time() < deadline <= time.time() + 1800:
-                raise ValueError("Invalid short-lived pairing deadline")
+            ticket_deadline(response["expires_at"])
             state = {"status": "pending", "home": str(home), "source": str(source), "bundle": str(bundle),
                      "platform": origin, **helper, "request_id": request_id, "claim_url": claim_url,
                      "ticket_expires_at": response["expires_at"], "poll_secret": secret, "methods": methods,

@@ -8,6 +8,11 @@
 | 使用双边协作、后台推进与用户提醒 | [M2 与通知闭环](architecture/COLLABORATION_AND_ATTENTION.md) · [本轮验收](verification/ATTENTION_COMPLETION_2026-09-15.md) |
 | 自行部署、升级、维护证书 | [部署指南](operations/DEPLOYMENT.md) |
 | 从源码接入或升级 Hermes | [Hermes 指南](operations/HERMES.md) |
+| 系统性测试、用户旅程和发布门禁 | [测试方案](testing/TEST_STRATEGY.md) |
+| 实操验证两个 Agent 和两边用户介入 | [双 Agent 人在环 Runbook](testing/TWO_AGENT_HITL_RUNBOOK.md) |
+| 按编号执行每次测试并保存证据 | [测试步骤说明](testing/TEST_EXECUTION_GUIDE.md) |
+| 查看本轮实际功能测试结果 | [2026-09-23 双 Agent / Web / 部署测试报告](testing/TEST_REPORT_2026-09-23.md) |
+| 查看本轮问题的复核与源码修复 | [2026-09-23 测试问题修复记录](testing/REMEDIATION_2026-09-23.md) |
 | 查部署版本、验收和回滚证据 | [发布索引](releases/README.md) · [验证索引](verification/README.md) |
 | 核对仅凭官网地址的 Hermes 接入流程 | [自动接入验收](verification/HERMES_AUTONOMOUS_ONBOARDING_2026-09-18.md) · [官网接入包 r2 发布](releases/HERMES_AUTONOMOUS_ONBOARDING_RELEASE_2026-09-18.md) |
 | 调整仓库边界、目录与发布流程 | [仓库维护](maintenance/REPOSITORY_MAINTENANCE.md) · [本次结构与内容清理](maintenance/STRUCTURE_CLEANUP_2026-09-15.md) |

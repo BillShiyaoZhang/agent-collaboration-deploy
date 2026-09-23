@@ -91,8 +91,11 @@ class DeploymentSecurity(unittest.TestCase):
             config = (ROOT / "deploy/nginx/nginx.conf").read_text(encoding="utf-8")
             # Keep the actual ingress locations/rules. Replace only TLS/listeners
             # and upstreams so the test needs no certificate or external service.
+            self.assertIn("listen 443 ssl;", config)
+            self.assertIn("http2 on;", config)
             config = config.replace("listen 80;", "listen 8081;")
-            config = config.replace("listen 443 ssl http2;", "listen 8080;")
+            config = config.replace("listen 443 ssl;", "listen 8080;")
+            config = config.replace("http2 on;", "")
             config = re.sub(r"^\s*ssl_certificate(?:_key)?\s+[^;]+;", "", config, flags=re.M)
             config = config.replace("server web:3000;", "server 127.0.0.1:8088;")
             config = config.replace("server platform:8080;", "server 127.0.0.1:8088;")

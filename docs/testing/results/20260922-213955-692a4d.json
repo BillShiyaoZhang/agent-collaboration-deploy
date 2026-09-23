@@ -1,0 +1,150 @@
+{
+  "run_id": "20260922-213955-692a4d",
+  "created_at": "2026-09-23T02:57:42.005599+00:00",
+  "report": "../TEST_REPORT_2026-09-23.md",
+  "scope": "Functional testing; user explicitly excluded T05, T06, T07 and T10. No subjective UX acceptance.",
+  "counts": {
+    "passed": 7,
+    "partial": 1,
+    "failed": 1,
+    "excluded": 4
+  },
+  "counted_component_tests": 502,
+  "execution_complete": true,
+  "all_tests_passed": false,
+  "product_code_modified": false,
+  "source_heads": {
+    ".": "5a44fd3e323e22477aa4569e49e78bf3f06c46b3",
+    "web": "3a2b2517f238023b4c6800a41bf51f7b314a4eee",
+    "platform": "2ed906d28f27d76cbdcf463b4031d364aae63486",
+    "sdk": "ecf829dc31099ea889abf2633cbe47afd522eab5"
+  },
+  "tests": [
+    {
+      "id": "T00",
+      "status": "passed",
+      "evidence": [
+        "../../../build/test-runs/20260922-213955-692a4d/T00-remote-verified.json"
+      ]
+    },
+    {
+      "id": "T01",
+      "status": "passed",
+      "evidence": [
+        "../../../build/test-runs/20260922-213955-692a4d/T01-final-summary.json"
+      ]
+    },
+    {
+      "id": "T02",
+      "status": "passed",
+      "evidence": [
+        "../../../build/test-runs/20260922-213955-692a4d/T02-parity-result.json",
+        "../../../build/test-runs/20260922-213955-692a4d/T02-T08-helper-result.json"
+      ]
+    },
+    {
+      "id": "T03",
+      "status": "passed",
+      "evidence": [
+        "../../../build/test-runs/20260922-213955-692a4d/T03-account-isolation.json",
+        "../../../build/test-runs/20260922-213955-692a4d/T03-T04-full-stack-result.json"
+      ]
+    },
+    {
+      "id": "T04",
+      "status": "passed",
+      "evidence": [
+        "../../../build/test-runs/20260922-213955-692a4d/T04-rejection-retry.json",
+        "../../../build/test-runs/20260922-213955-692a4d/T04-connected-and-T12-echo.json"
+      ]
+    },
+    {
+      "id": "T05",
+      "status": "excluded_by_user",
+      "evidence": []
+    },
+    {
+      "id": "T06",
+      "status": "excluded_by_user",
+      "evidence": []
+    },
+    {
+      "id": "T07",
+      "status": "excluded_by_user",
+      "evidence": []
+    },
+    {
+      "id": "T08",
+      "status": "partial",
+      "evidence": [
+        "../../../build/test-runs/20260922-213955-692a4d/T02-T08-helper-result.json",
+        "../../../build/test-runs/20260922-213955-692a4d/T08-web-resilience-result.json",
+        "../../../build/test-runs/20260922-213955-692a4d/T08-real-gateway.json",
+        "../../../build/test-runs/20260922-213955-692a4d/cloud-http-errors.jsonl",
+        "../../../build/test-runs/20260922-213955-692a4d/cloud-web-errors.json"
+      ]
+    },
+    {
+      "id": "T09",
+      "status": "passed",
+      "evidence": [
+        "../../../build/test-runs/20260922-213955-692a4d/T09-security-result.json",
+        "../../../build/test-runs/20260922-213955-692a4d/T09-cloud-revoke.json"
+      ]
+    },
+    {
+      "id": "T10",
+      "status": "excluded_by_user",
+      "evidence": []
+    },
+    {
+      "id": "T11",
+      "status": "passed",
+      "evidence": [
+        "../../../build/test-runs/20260922-213955-692a4d/T11-final.json",
+        "../../../build/test-runs/20260922-213955-692a4d/T11-history-final.json"
+      ]
+    },
+    {
+      "id": "T12",
+      "status": "failed",
+      "evidence": [
+        "../../../build/test-runs/20260922-213955-692a4d/T12/automatic-clean-baseline.json",
+        "../../../build/test-runs/20260922-213955-692a4d/T12/automatic-run.json",
+        "../../../build/test-runs/20260922-213955-692a4d/T12/deadline-observation.json",
+        "../../../build/test-runs/20260922-213955-692a4d/T12/negative-results.json"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "D-01",
+      "test": "T12",
+      "status": "open",
+      "description": "Automatic onboarding rejects a normal claim when returned remaining lifetime is 1801.054 seconds against a strict 1800-second client-clock limit."
+    },
+    {
+      "id": "D-02",
+      "test": "T08",
+      "status": "open",
+      "description": "Observed control polling HTTP 500; contemporaneous server SQLite lock/timeouts. Specific causal transaction not localized; retry with same request ID succeeded."
+    }
+  ],
+  "cleanup": {
+    "test_pairings_revoked": true,
+    "run_processes_remaining": 0,
+    "copied_model_credentials_removed": true,
+    "browser_logged_out_and_closed": true,
+    "server_test_containers_removed": true,
+    "production_container_ids_and_start_times_unchanged": true,
+    "test_accounts_and_protected_backups_retained": true
+  },
+  "limitations": [
+    "T12 normal claim confirmation and complete automatic rerun remain unverified because the primary path failed. Manual pairing is reported separately.",
+    "Windows native install only; wrong-OS check-only does not validate architecture.",
+    "Same OS user with separate identities/profiles, not two OS security sandboxes.",
+    "One browser with explicit logout/login; API sessions use independent cookie jars.",
+    "Local container security test used an earlier Web image; current image UID and upgrade were verified separately.",
+    "No production release rollback, ACME renewal, capacity test or subjective UX acceptance."
+  ]
+}

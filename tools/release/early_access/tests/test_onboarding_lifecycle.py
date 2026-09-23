@@ -31,6 +31,49 @@ class LifecycleTests(unittest.TestCase):
         launcher.write_text(f'#!/usr/bin/env bash\nunset PYTHONPATH\nexec "{python}" "/host/hermes" "$@"\n')
         self.assertEqual(onboarding.launcher_interpreters(launcher)[0], str(python))
 
+    def test_ticket_deadline_allows_small_clock_skew_but_stays_bounded(self):
+        now = 1_800_000_000.0
+
+        def expiry(seconds):
+            return datetime.fromtimestamp(now + seconds, timezone.utc).isoformat()
+
+        for seconds in (1795, 1800, 1801.054, 1805, 1810):
+            with self.subTest(seconds=seconds):
+                self.assertAlmostEqual(onboarding.ticket_deadline(expiry(seconds), now=now), now + seconds)
+        for seconds in (-1, 0, 1810.001, 1860):
+            with self.subTest(seconds=seconds), self.assertRaisesRegex(ValueError, "short-lived pairing deadline"):
+                onboarding.ticket_deadline(expiry(seconds), now=now)
+        for value in (None, 123, datetime.fromtimestamp(now + 1800).isoformat()):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "short-lived pairing deadline"):
+                onboarding.ticket_deadline(value, now=now)
+
+    def test_normal_server_clock_lead_keeps_automatic_claim_pending(self):
+        now = 1_800_000_000.0
+        expires_at = datetime.fromtimestamp(now + 1801.054, timezone.utc).isoformat()
+        response = {"request_id": "11111111-2222-4333-8444-555555555555",
+                    "claim_url": "https://agents.example.org/connect/test-claim", "expires_at": expires_at}
+        args = types.SimpleNamespace(status=False, platform="https://agents.example.org", bundle_dir=self.home,
+                                     port=54321, pair_days=1, allow_web_actions=False, name="Test Hermes")
+        constants = types.SimpleNamespace(__file__=str(self.home / "hermes_constants.py"),
+                                          get_hermes_home=lambda: self.home)
+        config = types.SimpleNamespace(get_config_path=lambda: self.home / "config.yaml",
+                                       require_readable_config_before_write=lambda path: {})
+        helper = {"agent_urn": "urn:hermes:agent:TestHelper", "helper": str(self.home / "agent-comm-helper"),
+                  "identity_dir": str(self.home / "identity"), "helper_url": "http://127.0.0.1:54321", "port": 54321}
+        with patch.object(onboarding, "ensure_hermes", return_value=(constants, config)), \
+             patch.object(onboarding, "retain_bundle", return_value=self.home), \
+             patch.object(onboarding.subprocess, "run"), \
+             patch.object(onboarding, "ensure_helper", return_value=helper), \
+             patch.object(onboarding, "run_json", return_value={"signature": "a" * 128, "pubkey": "b" * 64}), \
+             patch.object(onboarding, "request_json", return_value=response), \
+             patch.object(onboarding, "detached") as detached, \
+             patch.object(onboarding.time, "time", return_value=now), redirect_stdout(io.StringIO()):
+            onboarding.onboard(args)
+        state = json.loads((self.home / "agent-comm/onboarding.json").read_text(encoding="utf-8"))
+        self.assertEqual(state["status"], "pending")
+        self.assertEqual(state["ticket_expires_at"], expires_at)
+        detached.assert_called_once()
+
     def test_background_process_outlives_installer_terminal_and_has_profile(self):
         with patch.object(onboarding.subprocess, "Popen") as popen, \
              patch.dict(os.environ, {"PYTHONHOME": "/wrong", "PYTHONPATH": "/wrong", "HERMES_HOME": "/wrong"}):

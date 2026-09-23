@@ -142,7 +142,10 @@ api:
         assert roundtrip("inbox.list")["error"]["code"] == "method_not_allowed"
         assert roundtrip("attention.list")["error"]["code"] == "method_not_allowed"
         bridge.pair(console["urn"], "network-test-owner", ["capabilities", "contacts.list", "attention.list", "collaboration.state"], iso(3600))
-        pending = store.prepare_contact("pending-contact", ["需要主人核对"], console["urn"], owner)
+        # A single owner cannot add the confirmed Console identity again under
+        # a new contact ID. Use distinct unresolved identities for approval tests.
+        pending_urn = f"urn:agent-comm:agent:{uuid.uuid4().hex}"
+        pending = store.prepare_contact("pending-contact", ["需要主人核对"], pending_urn, owner)
         attention = roundtrip("attention.list", params={"after": 0, "limit": 100})["result"]
         notice = next(item for item in attention["items"] if item.get("approval_id") == pending["approval_id"])
         assert notice["state"] == "open" and "question" not in notice and "token" not in notice
@@ -246,13 +249,15 @@ api:
 
         # Approval responses are supported only through an explicitly scoped
         # local pairing, and that grant never extends to another owner's work.
-        remote_pending = store.prepare_contact("remote-approved", ["远程明确确认的联系人"], console["urn"], owner)
+        remote_approval_urn = f"urn:agent-comm:agent:{uuid.uuid4().hex}"
+        remote_pending = store.prepare_contact("remote-approved", ["远程明确确认的联系人"], remote_approval_urn, owner)
         native_lease = store.begin_confirmation(remote_pending["approval_id"], owner)
         approval_params = {"approval_id": remote_pending["approval_id"], "decision": "approve"}
         own_before = store.state(owner)
         assert roundtrip("approval.respond", params=approval_params)["error"]["code"] == "method_not_allowed"
         assert store.state(owner) == own_before
-        foreign_pending = store.prepare_contact("foreign-pending", ["其他账号待确认的联系人"], console["urn"], foreign_owner)
+        foreign_pending_urn = f"urn:agent-comm:agent:{uuid.uuid4().hex}"
+        foreign_pending = store.prepare_contact("foreign-pending", ["其他账号待确认的联系人"], foreign_pending_urn, foreign_owner)
         foreign_before = store.state(foreign_owner)
         bridge.pair(console["urn"], "network-test-owner", ["capabilities", "contacts.list", "conversation.send",
                     "conversation.get", "approval.respond", "test.unimplemented"], iso(3600))

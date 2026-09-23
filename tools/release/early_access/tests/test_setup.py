@@ -42,7 +42,8 @@ class TestBundleInstaller(unittest.TestCase):
         for name in ("install.py", "configure_hermes.py"):
             shutil.copy2(SCRIPTS / name, self.root / name)
         (self.root / "README.md").write_text("test distribution", encoding="utf-8")
-        (self.root / "agent-comm-helper.exe").write_bytes(b"verified test helper; never executed")
+        self.helper_name = "agent-comm-helper.exe" if install.host_platform().startswith("windows-") else "agent-comm-helper"
+        (self.root / self.helper_name).write_bytes(b"verified test helper; never executed")
         for name, version in TEST_PACKAGES.items():
             base = name.replace("-", "_")
             wheel = self.root / "wheels" / f"{base}-{version}-py3-none-any.whl"
@@ -56,7 +57,9 @@ class TestBundleInstaller(unittest.TestCase):
     def manifest(self):
         files = {path.relative_to(self.root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
                  for path in self.root.rglob("*") if path.is_file() and path.name != "SHA256SUMS.json"}
-        (self.root / "SHA256SUMS.json").write_text(json.dumps({"packages": TEST_PACKAGES, "files": files}), encoding="utf-8")
+        (self.root / "SHA256SUMS.json").write_text(json.dumps({
+            "platform": install.host_platform(), "packages": TEST_PACKAGES, "files": files
+        }), encoding="utf-8")
         return files
 
     def test_check_only_verifies_without_hermes_or_pip(self):
@@ -65,21 +68,73 @@ class TestBundleInstaller(unittest.TestCase):
             self.assertEqual(install.main(["--bundle-dir", str(self.root), "--check-only"]), 0)
         run.assert_not_called()
 
+    def test_wrong_os_bundle_is_rejected_before_install_but_builder_can_verify_it(self):
+        target = "linux-amd64" if install.host_platform().startswith("windows-") else "windows-amd64"
+        target_helper = "agent-comm-helper.exe" if target.startswith("windows-") else "agent-comm-helper"
+        (self.root / self.helper_name).rename(self.root / target_helper)
+        files = self.manifest()
+        (self.root / "SHA256SUMS.json").write_text(json.dumps({
+            "platform": target, "packages": TEST_PACKAGES, "files": files
+        }), encoding="utf-8")
+        with patch.object(install, "ensure_hermes", side_effect=AssertionError("must not inspect Hermes")), \
+             patch.object(install.subprocess, "run") as run, \
+             redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()) as error:
+            self.assertEqual(install.main(["--bundle-dir", str(self.root), "--check-only"]), 2)
+            self.assertEqual(install.main(["--bundle-dir", str(self.root)]), 2)
+            self.assertEqual(install.main(["--bundle-dir", str(self.root), "--cross-platform-check"]), 2)
+            self.assertEqual(install.main(["--bundle-dir", str(self.root), "--check-only", "--cross-platform-check"]), 0)
+        self.assertIn("this host requires", error.getvalue())
+        run.assert_not_called()
+
+    def test_wrong_cpu_and_inconsistent_helper_are_rejected(self):
+        if self.helper_name.endswith(".exe"):
+            (self.root / self.helper_name).rename(self.root / "agent-comm-helper")
+        files = self.manifest()
+        (self.root / "SHA256SUMS.json").write_text(json.dumps({
+            "platform": "macos-arm64", "packages": TEST_PACKAGES, "files": files
+        }), encoding="utf-8")
+        with patch.object(install, "host_platform", return_value="macos-amd64"), \
+             redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()) as error:
+            self.assertEqual(install.main(["--bundle-dir", str(self.root), "--check-only"]), 2)
+        self.assertIn("macos-amd64", error.getvalue())
+        self.assertEqual(install.verify_bundle(self.root, cross_platform=True)[0], self.root)
+        (self.root / "agent-comm-helper").rename(self.root / "agent-comm-helper.exe")
+        files = self.manifest()
+        (self.root / "SHA256SUMS.json").write_text(json.dumps({
+            "platform": "macos-arm64", "packages": TEST_PACKAGES, "files": files
+        }), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "must contain agent-comm-helper"):
+            install.verify_bundle(self.root, cross_platform=True)
+
+    def test_missing_or_malformed_platform_is_rejected_even_for_cross_platform_check(self):
+        files = self.manifest()
+        for variant in (None, {}, [], "linux-arm64"):
+            with self.subTest(variant=variant):
+                (self.root / "SHA256SUMS.json").write_text(json.dumps({
+                    "platform": variant, "packages": TEST_PACKAGES, "files": files
+                }), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "supported helper platform"):
+                    install.verify_bundle(self.root, cross_platform=True)
+
     def test_tampering_or_manifest_escape_never_reaches_installation(self):
-        (self.root / "agent-comm-helper.exe").write_bytes(b"tampered")
+        (self.root / self.helper_name).write_bytes(b"tampered")
         with patch.object(install.subprocess, "run") as run, redirect_stderr(io.StringIO()):
             self.assertEqual(install.main(["--bundle-dir", str(self.root)]), 2)
         run.assert_not_called()
         files = self.manifest()
         files["../outside.txt"] = "0" * 64
-        (self.root / "SHA256SUMS.json").write_text(json.dumps({"packages": TEST_PACKAGES, "files": files}), encoding="utf-8")
+        (self.root / "SHA256SUMS.json").write_text(json.dumps({
+            "platform": install.host_platform(), "packages": TEST_PACKAGES, "files": files
+        }), encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "escapes"):
             install.verify_bundle(self.root)
 
     def test_unlisted_or_wrong_version_wheel_is_rejected(self):
         files = self.manifest()
         files.pop(next(key for key in files if key.endswith(".whl")))
-        (self.root / "SHA256SUMS.json").write_text(json.dumps({"packages": TEST_PACKAGES, "files": files}), encoding="utf-8")
+        (self.root / "SHA256SUMS.json").write_text(json.dumps({
+            "platform": install.host_platform(), "packages": TEST_PACKAGES, "files": files
+        }), encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "not covered"):
             install.verify_bundle(self.root)
         self.manifest()
@@ -100,7 +155,9 @@ class TestBundleInstaller(unittest.TestCase):
         files = self.manifest()
         for packages in (None, {"agent-comm-runtime": "0.1.0"}, {**TEST_PACKAGES, "unexpected-package": "1.0"}):
             with self.subTest(packages=packages):
-                (self.root / "SHA256SUMS.json").write_text(json.dumps({"files": files, "packages": packages}), encoding="utf-8")
+                (self.root / "SHA256SUMS.json").write_text(json.dumps({
+                    "platform": install.host_platform(), "files": files, "packages": packages
+                }), encoding="utf-8")
                 with self.assertRaisesRegex(ValueError, "package versions"):
                     install.verify_bundle(self.root)
 
@@ -399,8 +456,16 @@ def atomic_config_write(path, data):
     def test_source_install_is_found_only_next_to_current_hermes_interpreter(self):
         sys.path.remove(str(self.source))
         importlib.invalidate_caches()
+        original_find_spec = importlib.util.find_spec
+
+        def missing_hermes_constants(name):
+            # A developer's unrelated editable Hermes install must not make
+            # this source-fallback test depend on the test runner's venv.
+            return None if name == "hermes_constants" else original_find_spec(name)
+
         with patch.object(sys, "prefix", str(self.source / "venv")), \
-             patch.object(sys, "executable", str(self.source / "venv/Scripts/python.exe")):
+             patch.object(sys, "executable", str(self.source / "venv/Scripts/python.exe")), \
+             patch.object(importlib.util, "find_spec", side_effect=missing_hermes_constants):
             constants, _ = install.ensure_hermes()
         self.assertEqual(Path(constants.__file__).resolve(), (self.source / "hermes_constants.py").resolve())
         self.assertEqual(constants.get_hermes_home(), self.home)

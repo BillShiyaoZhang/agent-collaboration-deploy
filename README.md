@@ -59,6 +59,9 @@ cd agent-collaboration-deploy
 
 - [文档导航](docs/README.md)：按读者与工作类型查找说明。
 - [部署与升级](docs/operations/DEPLOYMENT.md)：配置、DNS、证书、启动、备份与验证。
+- [系统测试方案](docs/testing/TEST_STRATEGY.md)：环境分层、能力追踪、网页添加联系人、Hermes 验收与发布门禁。
+- [双 Agent 人在环 Runbook](docs/testing/TWO_AGENT_HITL_RUNBOOK.md)：两个 Agent、两边用户决定、断线重试和证据采集。
+- [测试步骤说明](docs/testing/TEST_EXECUTION_GUIDE.md)：按 T00～T12 执行，每项含目标、参与、环境和 Mermaid 图。
 - [当前架构](docs/architecture/OVERVIEW.md) · [流程图](docs/architecture/FLOWS.md) · [技术实现详解](docs/architecture/TECHNICAL_IMPLEMENTATION_WALKTHROUGH.md)：组件职责、授权、同步与 13 张实现图。
 - [Agent 能力与 skill 对照](agent-comm-platform/agent-comm/docs/architecture/CAPABILITY_SKILL_MAP.md)：能力覆盖、遗漏修正与包含平台地址和接入链接的加好友文案导出。
 - [发布记录](docs/releases/README.md)：版本、验证范围、运行镜像及回滚位置。
