@@ -42,7 +42,8 @@ services:
       dockerfile: Dockerfile
     container_name: agent-web
     environment:
-      - DATABASE_URL=file:/app/data/prod.db
+      # One Prisma connection buffers concurrent Web queries before SQLite's single writer.
+      - DATABASE_URL=file:/app/data/prod.db?connection_limit=1
       - NEXTAUTH_URL=${NEXTAUTH_URL:?Set NEXTAUTH_URL to the public HTTPS origin}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?Set NEXTAUTH_SECRET in .env}
       - AGENT_PLATFORM_URL=http://platform:8080
