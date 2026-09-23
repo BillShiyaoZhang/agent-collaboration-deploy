@@ -20,6 +20,6 @@
 | 2026-09-13 | [Registry ownership](REGISTRY_DEPLOYMENT_2026-09-13.md) | HTTP/libp2p 身份所有权修复、数据保留与恢复位置 |
 | 2026-09-13 | [HTTPS 登录修复](HTTPS_LOGIN_FIX_2026-09-13.md) | 安全及分块 cookie、认证回归和生产验证 |
 
-最新源码组合由根仓库递归子模块引用确定，不能用较早记录的 “deployed” 或测试数量证明新提交的运行状态。本轮线上 Web 镜像对应的代码基线是 Deploy `125a8d0d223c4bceefae39de65dbe6c6522eb7e7`、Web `66bcef8900189560039b2fef41921e886240030b`；后续发布记录的提交只更新文档，不改变运行镜像。Platform 与官网安装包没有重发。官网安装包和源码 ZIP 仍为 `2026-09-23-testing-remediation-r2`，其中固定 Deploy 提交为 `30ed9aeb9e85f75b89a7170bfeeb7ad52a48d253`；确切提交与校验值以下载目录的 `release-manifest.json` 为准。GitHub v0.7.0 Release 保留原发布资产，没有被此次 Web 热修复覆盖。
+最新源码组合由根仓库递归子模块引用确定，不能用较早记录的 “deployed” 或测试数量证明新提交的运行状态。**截至 2026-09-23 的发布快照：**Web 镜像对应 Deploy `125a8d0d223c4bceefae39de65dbe6c6522eb7e7`、Web `66bcef8900189560039b2fef41921e886240030b`；当次 Platform 与官网安装包未重发。官网安装包和源码 ZIP 当时为 `2026-09-23-testing-remediation-r2`，固定 Deploy 提交 `30ed9aeb9e85f75b89a7170bfeeb7ad52a48d253`；其后实际下载版本和校验值以[官网发布清单](https://agent-communication.online/downloads/release-manifest.json)为准。GitHub v0.7.0 Release 保留原发布资产，未被该次 Web 热修复覆盖。
 
 新增发布记录应写清发布时的版本、检查范围、持久数据变化、运行结果和回滚位置；不将密钥、真实数据库或原始私人日志放入仓库。通用步骤在 [运维指南](../operations/DEPLOYMENT.md) 中维护。

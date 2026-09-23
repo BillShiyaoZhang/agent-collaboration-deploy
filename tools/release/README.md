@@ -12,11 +12,12 @@ python tools/release/package_web_release.py --release RELEASE_ID
 
 默认输出 `build/releases/web-release.tar.gz`，可用 `--output` 指定其他位置。包内包括：
 
-- `web/`：完整的 Web 可发布源码快照。
-- `docker-compose.yml`、`deploy/nginx/nginx.conf`、`deploy/platform/config.yaml`：待审阅的部署配置。
-- `manifest.json`：`mode: full_snapshot`、源提交、逐文件校验值与部署语义。
+- `web/`：完整的 Web 可发布源码快照，含 Web 自身 `docs/`。
+- `docs/`、`agent-comm-platform/docs/`、`agent-comm-platform/agent-comm/docs/`：其余三仓在固定提交的原始文档，供官网 `/guide/source/` 只读挂载；没有另行改写或手工复制 Markdown。
+- `docker-compose.yml`、`deploy/nginx/nginx.conf`、`deploy/nginx/docs-source.conf`、`deploy/platform/config.yaml`：待审阅的部署配置。
+- `manifest.json`：`mode: full_snapshot`、四仓源提交、逐文件校验值与部署语义。
 
-该快照应解压到新的源码目录并构建，审阅配置后再部署。它没有删除补丁清单，不能作为覆盖包直接叠加到旧源码上；旧源码、在线数据库和挂载数据的切换由部署流程管理。本工具只生成文件，不连接或修改服务器。
+该快照应解压到新的源码目录，将 `web/` 作为 Web 源码目录并构建，审阅配置后再部署。Platform 服务仍需从清单固定提交取得完整源码；包内 Platform 与 SDK 仅包含供官网挂载的 `docs/`，不能用来构建 Platform 服务。它没有删除补丁清单，不能作为覆盖包直接叠加到旧源码上；旧源码、在线数据库和挂载数据的切换由部署流程管理。本工具只生成文件，不连接或修改服务器。
 
 ## 接入包与开发源码
 

@@ -1,68 +1,30 @@
-# 仓库边界与日常维护
+# 仓库与文档维护
 
-多个任务同时工作时，按[并行 worktree 的整合与发布](PARALLEL_WORKTREES.md)交接、合并与固定子模块。
+这套系统的源码分在多个仓库。本部署仓库固定子模块提交，负责组合运行、跨组件测试和发布证据。修改前先从[开发者指南](../developers/README.md)定位所有者；多个任务并行时参考[worktree 整合流程](PARALLEL_WORKTREES.md)。
 
-## 当前分工
+## 代码归属
 
-已有四个本地仓库足以支持当前独立构建和发布，无需新增 GitHub 仓库。
+| 仓库 | 维护内容 |
+| --- | --- |
+| `agent-collaboration-deploy` | Compose、nginx/Platform 部署配置、组合安装包、跨组件文档与验收 |
+| `agent-collaboration-web` | Web 工作台、账户副本与同步、官网、共享客户端契约 |
+| `agent-comm-platform` | Registry、MQ、Relay 和服务端 API |
+| `agent-comm` | SDK/helper、Python runtime 和宿主连接器 |
 
-| 仓库 | 维护内容 | 不同项目之间的约定 |
-| --- | --- | --- |
-| `agent-collaboration-deploy` | Compose、nginx/平台部署配置、跨仓架构、运维、发布工具、组合验收 | 固定 Web 和 Platform 的提交 |
-| `agent-collaboration-web` | 工作台、账户副本与同步、静态官网、共享客户端契约 | 官网可单独同步；契约以 npm workspace 维护 |
-| `agent-comm-platform` | Registry、MQ、relay、管理 API | Go 依赖由嵌套 SDK 子模块固定 |
-| `agent-comm` | Go 通信 SDK/helper、Python runtime、Hermes/OpenClaw 适配器 | 保留公共 Go 包路径和安装入口 |
+`agent-comm-ios` 是独立外部仓库，不在本部署仓库的子模块中。组件改动应先在所属仓库验证，再由内到外固定 `agent-comm` → Platform → Web（可并行于前两者）→ 部署仓库的提交。父仓库只记录子模块提交；发布前确认引用的提交可从目标远端取得。具体组合部署与备份操作见[部署指南](../operations/DEPLOYMENT.md)。
 
-`agent-comm-ios` 是独立外部客户端，本部署仓库未引用其源码或固定提交，本次未改动。
-后续出现独立团队、独立版本周期或多个仓库直接发布同一模块的需求时，
-再评估拆出 `client-contract` 或独立连接器；目前拆分会增加同步和安装步骤。
+## 文档分别为谁服务
 
-## 目录约定
+- [用户指南](../users/README.md)回答如何连接、使用、理解状态和撤销权限，不要求读者理解源码或手工配对。
+- [使用项目的 Agent 指南](../agents/README.md)负责任务路由；公开安装页和 SDK skill 是 agent 实际执行时的操作入口。
+- [开发者指南](../developers/README.md)与根[AGENTS.md](../../AGENTS.md)解释代码归属、测试和开发用 coding agent 的约定。组件专属细节写在组件仓库。
+- `architecture/`、`operations/`、`testing/` 保存可复用的实现与操作；`releases/`、`verification/` 和带日期测试报告保存历史证据。阶段提案完成后，将现行能力写入架构，尚未实现的约束写入[后续方向](../developers/FUTURE_DIRECTIONS.md)，移除会误导读者的旧提案。
 
-- 根 README 提供用途、结构与入口；现行说明放 `docs/architecture/`、`docs/operations/` 或组件的 `docs/guides/`。
-- 发布记录放 `docs/releases/`，包含日期、提交、验证、回滚证据；验收报告放 `docs/verification/`。
-- 规划文件只能描述尚未实现的方向，不能作为当前安装或能力说明。
-- 测试数据和生成物放忽略的 `build/`、`downloads/`、`output/`；不提交编译二进制、数据库、密钥或依赖目录。
-- 删除废弃代码时同步检查入口、导入、文档、打包脚本；有价值的决策提炼后保留，旧实现通过 Git 历史查阅。
-- 不删除现有生产数据库中的历史表来实现“源码清理”。数据迁移继续遵循组件升级指南。
+行为或入口变化时，先更新对应读者会打开的主指南，再检查官网页面、安装包说明、Web 站内引导、SDK skill 和相关深层文档是否仍一致。不要把源码、GitHub Release、官网安装包与生产站点视为同一次自动发布；实际版本需核对发布记录及下载清单。
 
-## 本次需要上传哪些仓库
+## 本地核对
 
-四个现有仓库均有本地整理，按以下顺序发布提交。无需新建远程仓库，也不要把子模块目录
-当作普通文件夹整体上传到部署仓库。
-
-1. **agent-comm**：上传 SDK 的整理提交。
-2. **agent-comm-platform**：将 `agent-comm` 固定到上一步提交，上传平台整理提交。
-3. **agent-collaboration-web**：上传 Web 的整理提交；可与前两步并行。
-4. **agent-collaboration-deploy**：固定 Platform 和 Web 到已上传提交，再上传部署整理提交。
-
-本地提交和远程上传是两个步骤。不要先上传引用了远程尚不存在的子模块提交的父仓库。
-本次不自动更新线上服务；服务升级按[部署指南](../operations/DEPLOYMENT.md)执行。
-
-检查各层状态和固定版本：
-
-```sh
-git status --short
-git submodule status --recursive
-git submodule foreach --recursive 'git status --short'
-```
-
-本次四仓使用同名本地分支 `codex/structure-cleanup-20260915`。在部署根目录审阅后，
-可按顺序执行以下上传命令；这些命令需要维护者自己的 GitHub 推送权限：
-
-```sh
-git -C agent-comm-platform/agent-comm push -u origin codex/structure-cleanup-20260915
-git -C agent-comm-platform push -u origin codex/structure-cleanup-20260915
-git -C agent-collaboration-web push -u origin codex/structure-cleanup-20260915
-git push -u origin codex/structure-cleanup-20260915
-```
-
-本次仅完成本地提交，尚未执行上述上传命令。维护者在各仓库审核分支并合并；部署仓库需最后合并。
-若通过 PR squash 或 rebase 改变了子提交 SHA，父仓库必须重新固定到实际合并提交。
-
-## 验证入口
-
-从部署根目录运行：
+从部署仓库根目录运行：
 
 ```sh
 python tools/maintenance/check_structure.py
@@ -71,9 +33,6 @@ python -m unittest discover -s tools/release/tests -v
 docker compose config --quiet
 ```
 
-从 Web 根目录运行 `npm ci`、`npm run db:generate`、`npm test`、`npm run lint`、`npm run build`。
-Go/Python 组件测试命令见各仓库的 docs 索引。组合网络测试见
-[根测试说明](../../tests/README.md)，发布操作见[发布工具](../../tools/release/README.md)。
+第一项离线检查四仓 Markdown 相对链接和指向这四仓默认分支的 GitHub 文件链接。其余命令按改动范围选择；Compose 验证需提供配置要求的环境变量。Web、Platform、SDK 内部测试与跨组件测试入口分别见各仓库文档和[本仓测试说明](../../tests/README.md)。
 
-`check_structure.py` 离线检查四仓边界及 Markdown 文件链接，包括指向本组织四仓 main/master 的
-GitHub 文件链接；固定历史提交的 URL、锚点和外部网站不在检查范围内。
+测试数据及生成物放在忽略目录，避免提交二进制、数据库、密钥、日志或用户身份文件。升级需保留原 helper 密钥、mailbox、connector receipts、协作状态和远程配对数据库；不能把重新初始化身份当成修复。

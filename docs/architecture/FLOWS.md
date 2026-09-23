@@ -1,8 +1,6 @@
 # 当前项目架构与流程图
 
-维护基准：2026-09-15 的固定源码。Web 已实现账户内容持久化与主动同步；agent 提供业务事实和执行授权。职责和接口说明见 [当前架构](OVERVIEW.md)，各次运行证据见 [发布索引](../releases/README.md)。
-
-需要逐层理解实际代码，可阅读 [技术实现详解：13 张 Mermaid 图](TECHNICAL_IMPLEMENTATION_WALKTHROUGH.md)。该文核对 2026-09-15 部署锁定源码，展开加密、RPC、确认租约、消息 ACK、同步 worker、数据模型与故障恢复。
+本页按用户可见的路径解释组件之间的流程。Web 保存账户副本并主动同步；agent 持有业务事实和执行授权。组件职责与协议见[当前架构](OVERVIEW.md)，具体代码入口在[开发者指南](../developers/README.md)，各次运行证据见[发布索引](../releases/README.md)。
 
 ## 1. 产品与数据归属
 
@@ -148,7 +146,7 @@ sequenceDiagram
     S-->>A: 授权 / 拒绝 / 待澄清
 ```
 
-Hermes 当前对应原生问题卡的回答框。主聊天框中的裸“可以”、远端 JSON 的 approved=true、模型自报用户同意，都不能替代该流程。适配器扩展必须验证真实渠道身份。
+Hermes 的原生确认使用问题卡回答框。用户也可以在本机明确配对 `approval.respond` 后，通过 Web 对 agent 提供的具体审批卡作答；agent 会检查配对主体、方法、期限和请求状态。主聊天框中的裸“可以”、远端 JSON 的 approved=true、模型自报用户同意，都不能替代可信回答。适配器扩展必须验证真实渠道身份。
 
 ## 6. 消息持久收发
 
@@ -173,7 +171,7 @@ sequenceDiagram
     B->>BH: 本机 ACK
 ```
 
-可靠 helper 出站使用 HTTPS MQ。传统 SDK 另有 P2P/DR 与平台 Relay，不能混画成此处的默认路径。通信 ACK、业务接受和日历执行是不同事实；当前会议能力发送协商消息，不写日历。
+可靠 helper 出站使用 HTTPS MQ。传统 SDK 另有 P2P/DR 与平台 Relay，不能混画成此处的默认路径。通信 ACK、双方接受并同步的会议约定和日历执行是不同事实；当前会议协作可形成约定，但不写日历。
 
 ## 7. 恢复、撤销与当前自动化范围
 
@@ -194,4 +192,4 @@ flowchart TD
 
 数据库分层保留：协作 Store、远程配对/会话库、connector receipts、helper mailbox/密钥、云 Registry/MQ，以及 Web 的账户持久副本和独立投递缓存。Web 的 10 分钟 RPC 缓存到期不删除已同步历史。离线时仍可查看最后同步的数据及时间，不据此声称当前在线；删除连接级联删除该账户的相关副本，不改变 agent 本地记录。
 
-旧浏览器 Demo、Web 独立业务 API/页面和根目录旧 connector/安装 CLI 已退役。有价值的产品边界整理为 [产品决策](DECISIONS.md)，旧探索与 Demo 交接原文保留在 Git 历史中。
+身份、授权、数据披露和恢复的长期约束见[产品决策](DECISIONS.md)。

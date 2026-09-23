@@ -8,7 +8,13 @@ services:
       - "443:443"
     volumes:
       - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/docs-source.conf:/etc/nginx/docs-source.conf:ro
       - ./agent-collaboration-web/site:/srv/site:ro
+      # Serve reviewed paths directly from the four repositories' docs/ trees.
+      - ./docs:/srv/docs/deploy:ro
+      - ./agent-collaboration-web/docs:/srv/docs/web:ro
+      - ./agent-comm-platform/docs:/srv/docs/platform:ro
+      - ./agent-comm-platform/agent-comm/docs:/srv/docs/sdk:ro
       - ./downloads:/srv/downloads:ro
       - ./acme-challenge:/var/www/certbot:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro

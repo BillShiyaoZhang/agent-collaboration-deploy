@@ -1,6 +1,6 @@
 # Agent 侧为中心的产品边界与扩展接口
 
-维护基准：2026-09-15 的固定源码。Web 已实现账户范围的加密持久副本与后台同步；agent 提供业务事实、执行和配对授权。本文是跨仓库架构入口，操作见 [部署指南](../operations/DEPLOYMENT.md) 与 [Hermes 指南](../operations/HERMES.md)，流程见 [架构图](FLOWS.md)，各次上线证据见 [发布记录](../releases/README.md)。
+本文是跨仓库架构入口。Web 保存账户范围的加密持久副本并后台同步；agent 提供业务事实、执行和配对授权。操作见[部署指南](../operations/DEPLOYMENT.md)与[Hermes 指南](../operations/HERMES.md)，流程见[架构图](FLOWS.md)，特定版本的上线证据见[发布记录](../releases/README.md)。
 
 ## 产品归属
 
@@ -88,7 +88,7 @@ Web 按登录账户和连接保存已认证读取结果，内容使用 AES-GCM �
 
 agent 离线时保留最后同步数据并标出时间和连接状态；旧数据不能证明当前在线或当前配对仍有效。配对到期、撤销或权限变更由 agent 执行，已披露的账户副本无法远程召回。删除 Web 连接会级联删除该账户在此连接下的工作台副本，不删除 agent 本地数据，也不撤销其他账户的配对。
 
-现有 SDK 没有 `conversation.list`，只能恢复 Web 已记录 ID 的会话。`conversation.get` 和 `inbox.list` 各返回最近 100 项，没有历史分页；不能发现未知旧会话或完整回补远端窗口之外的历史。服务端持续保留实际同步到的消息和回合。
+现有 SDK 没有 `conversation.list`，Web 只能发现自身已记录 ID 的会话。Agent RPC 的 `conversation.get` 和 `inbox.list` 各返回最近 100 项，不能从 agent 端完整回补窗口以外的历史。Web 服务端持续保留实际同步到的消息和回合，并允许客户端分页读取这些**已保存**的回合；这种分页不增加 agent RPC 的历史范围。
 
 ## 多端客户端共享模块
 

@@ -42,17 +42,25 @@ class TestReleases(unittest.TestCase):
 
     def web_repositories(self):
         root = self.repository(self.root / "deploy", {
-            ".gitignore": "agent-collaboration-web/\nbuild/\n",
+            ".gitignore": "agent-collaboration-web/\nagent-comm-platform/\nbuild/\n",
             "docker-compose.yml": "services: {}\n",
             "deploy/nginx/nginx.conf": "events {}\n",
+            "deploy/nginx/docs-source.conf": "default_type text/plain;\n",
             "deploy/platform/config.yaml": "platform: {}\n",
+            "docs/README.md": "# Deploy docs\n",
+            "docs/releases/old.md": "Historical release record\n",
         })
         self.repository(root / "agent-collaboration-web", {
             "src/page.ts": "export const title = 'current';\n", ".env": "PRIVATE=excluded",
             ".env.example": "TOKEN=replace-me\n", ".env.local": "PRIVATE=excluded-too",
             "data/private.sqlite3": b"database", "keys/private.key": b"secret",
             "helper": b"\x7fELFbinary", "README.md": "web source\n",
+            "docs/README.md": "# Web docs\n",
         })
+        platform = self.repository(root / "agent-comm-platform", {
+            ".gitignore": "agent-comm/\n", "docs/README.md": "# Platform docs\n",
+        })
+        self.repository(platform / "agent-comm", {"docs/README.md": "# SDK docs\n"})
         return root
 
     def test_snapshot_is_complete_private_assets_excluded_and_reproducible(self):
@@ -62,7 +70,10 @@ class TestReleases(unittest.TestCase):
         first = output.read_bytes()
         with tarfile.open(output) as archive:
             names = set(archive.getnames())
-            self.assertEqual(names, {"web/src/page.ts", "web/README.md", "web/.env.example", "manifest.json",
+            self.assertEqual(names, {"web/src/page.ts", "web/README.md", "web/docs/README.md",
+                                     "web/.env.example", "manifest.json", "docs/README.md",
+                                     "docs/releases/old.md", "agent-comm-platform/docs/README.md",
+                                     "agent-comm-platform/agent-comm/docs/README.md",
                                      *package_web_release.DEPLOY_FILES})
             self.assertEqual(archive.extractfile("web/.env.example").read(), b"TOKEN=replace-me\n")
             manifest = json.load(archive.extractfile("manifest.json"))
@@ -71,6 +82,10 @@ class TestReleases(unittest.TestCase):
             for name, expected in manifest["files"].items():
                 self.assertEqual(release_common.sha(archive.extractfile(name).read()), expected)
         self.assertEqual(result["source_heads"]["deploy"], release_common.repository_head(root))
+        self.assertEqual(result["source_heads"]["platform"],
+                         release_common.repository_head(root / "agent-comm-platform"))
+        self.assertEqual(result["source_heads"]["sdk"],
+                         release_common.repository_head(root / "agent-comm-platform/agent-comm"))
         package_web_release.build_archive(root, output, "test-release")
         self.assertEqual(first, output.read_bytes())
 

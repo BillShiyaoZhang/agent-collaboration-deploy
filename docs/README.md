@@ -1,22 +1,24 @@
 # 文档导航
 
-| 要完成的工作 | 入口 |
+先选择自己的角色。每个入口先说明能做什么、需要准备什么，再指向对应的操作或技术细节。
+[官网文档入口](https://agent-communication.online/guide/)按同样的角色展示各仓库 `docs/` 中的现行内容。
+
+| 读者 | 入口 | 适合的问题 |
+| --- | --- | --- |
+| 非技术用户 | [连接与使用指南](users/README.md) | 怎样让 Hermes 接入、在网页聊天、处理提醒、理解状态与权限 |
+| 使用项目的 agents | [Agent 使用指南](agents/README.md) | 接到安装或协作任务后该读哪个 skill、调用什么能力、怎样核实结果 |
+| 开发者与运维者 | [开发者指南](developers/README.md) | 仓库分工、源码准备、测试、部署、修改文档；开发用 coding agent 另读[仓库指令](../AGENTS.md) |
+
+## 按工作查深入资料
+
+| 工作 | 参考资料 |
 | --- | --- |
-| 了解产品、首次连接已有 agent | [项目 README](../README.md) · [官网自动接入指南](https://agent-communication.online/agent-install.md) · [接入包说明](../tools/release/early_access/README.md) |
-| 了解组件职责、协议、同步与授权 | [当前架构](architecture/OVERVIEW.md) · [流程图](architecture/FLOWS.md) · [技术实现详解](architecture/TECHNICAL_IMPLEMENTATION_WALKTHROUGH.md) · [产品决策](architecture/DECISIONS.md) |
-| 评审双边协作、授权与后续实现 | [设计与规划](planning/README.md) · [人—Agent—Agent—人的协作与授权设计 v1](planning/HUMAN_AGENT_COLLABORATION_V1.md) |
-| 使用双边协作、后台推进与用户提醒 | [M2 与通知闭环](architecture/COLLABORATION_AND_ATTENTION.md) · [本轮验收](verification/ATTENTION_COMPLETION_2026-09-15.md) |
-| 自行部署、升级、维护证书 | [部署指南](operations/DEPLOYMENT.md) |
-| 从源码接入或升级 Hermes | [Hermes 指南](operations/HERMES.md) |
-| 系统性测试、用户旅程和发布门禁 | [测试方案](testing/TEST_STRATEGY.md) |
-| 实操验证两个 Agent 和两边用户介入 | [双 Agent 人在环 Runbook](testing/TWO_AGENT_HITL_RUNBOOK.md) |
-| 按编号执行每次测试并保存证据 | [测试步骤说明](testing/TEST_EXECUTION_GUIDE.md) |
-| 查看本轮实际功能测试结果 | [2026-09-23 双 Agent / Web / 部署测试报告](testing/TEST_REPORT_2026-09-23.md) |
-| 查看本轮问题的复核与源码修复 | [2026-09-23 测试问题修复记录](testing/REMEDIATION_2026-09-23.md) |
-| 查部署版本、验收和回滚证据 | [发布索引](releases/README.md) · [验证索引](verification/README.md) |
-| 核对仅凭官网地址的 Hermes 接入流程 | [自动接入验收](verification/HERMES_AUTONOMOUS_ONBOARDING_2026-09-18.md) · [官网接入包 r2 发布](releases/HERMES_AUTONOMOUS_ONBOARDING_RELEASE_2026-09-18.md) |
-| 调整仓库边界、目录与发布流程 | [仓库维护](maintenance/REPOSITORY_MAINTENANCE.md) · [本次结构与内容清理](maintenance/STRUCTURE_CLEANUP_2026-09-15.md) |
+| 理解现行组件职责、授权和数据流 | [跨组件架构](architecture/OVERVIEW.md) · [产品决策](architecture/DECISIONS.md) · [双边协作与提醒](architecture/COLLABORATION_AND_ATTENTION.md) |
+| 自行部署、升级、接入已有 Hermes | [部署与升级](operations/DEPLOYMENT.md) · [Hermes 源码接入](operations/HERMES.md) · [完整接入包](../tools/release/early_access/README.md) |
+| 验证跨组件行为 | [测试方案](testing/TEST_STRATEGY.md) · [双 Agent 人在环验收](testing/TWO_AGENT_HITL_RUNBOOK.md) · [逐项测试步骤](testing/TEST_EXECUTION_GUIDE.md) |
+| 维护仓库及发布产物 | [仓库维护](maintenance/REPOSITORY_MAINTENANCE.md) · [发布工具](../tools/release/README.md) |
+| 查询某次上线或验收发生了什么 | [发布记录](releases/README.md) · [验证记录](verification/README.md) · [测试结果](testing/TEST_REPORT_2026-09-23.md) |
 
-`architecture/` 与 `operations/` 描述现行源码和维护流程，随实现更新。`releases/` 与 `verification/` 保存有日期的事实与证据；其历史镜像、源码路径和测试数量不代表当前部署状态。组件专属 API 和开发细节在所属子模块中维护，通过文档链接访问。
+`architecture/`、`operations/`、`testing/` 和组件自身的技术文档描述可复用的实现与操作。带日期的 `releases/`、`verification/` 和测试报告记录**当时**的版本、环境与证据，不代表当前线上状态；查看当前下载文件应核对[官网发布清单](https://agent-communication.online/downloads/release-manifest.json)。
 
-`planning/` 保存实现提案与待验证设计，明确区分已有基础、拟新增能力和后续探索。
+Web、Platform、SDK 是独立子模块。其专属 API、配置和测试说明由各自仓库维护；本目录提供跨组件的阅读入口。
