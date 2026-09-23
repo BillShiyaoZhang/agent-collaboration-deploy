@@ -6,9 +6,9 @@
 
 | 仓库 | 运行代码提交 |
 | --- | --- |
-| Deploy | `75ee0836e5c7c107e9ded384ab5761d1ad3ee5f7` |
+| Deploy | `81cff0a104950a20c8191d83f4f2d15d5d288aa1` |
 | Web | `dfb3e7b8776971134f594d9206e6201e58c3f3bd` |
-| Platform | `b80c2f38a5c61ee2f76bbadf460a15f411208887` |
+| Platform | `10d9a1a0c857dffa7b65a7acb77b6ab51cdea1f0` |
 | SDK | `d8adfade59cbf1b0bcc979c762eec2ad9d466c4c` |
 
 | 运行容器 | 镜像标识 |
@@ -26,5 +26,6 @@
 - 仅重建了 Platform 和 nginx 容器。Web 镜像与持久卷未变。
 - 生产环境 smoke 通过：统一阅读页与中英文 Markdown、旧 URL 的 308、未知与历史文档的 404、`/healthz`、公开 Registry 读接口、未授权 MQ ACK 的 401、登录与下载入口、容器和镜像版本。三个容器运行且重启计数为 0；身份密钥未变化，Web 与 MQ 数据库 `quick_check=ok`。
 - 从公网再次核对 `/docs/`、两份 API Markdown 均返回 200，旧 `/docs/api/` 返回 308 到新阅读页。
+- 浏览器实际打开旧网址，确认统一阅读器显示云端 API 正文与英文版入口；随后修正中文一处代码标记与加粗混排，最终 Markdown 经只读挂载直接显示，无须重建镜像。修正后复核浏览器呈现，并运行文档结构检查：106 份 Markdown，0 个错误。
 
 上述检查不等同于重新执行真实双 Agent 协作或首次安装验收。需要回退时，恢复切换前源码提交和保留的 Platform 镜像，再重建 Platform 与 nginx；保留当前生产卷、身份密钥和后续写入数据，不用备份数据库覆盖新写入。
