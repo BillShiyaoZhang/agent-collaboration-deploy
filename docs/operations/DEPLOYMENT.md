@@ -112,7 +112,7 @@ docker compose logs --tail=100
 
 ## 升级、备份与回退
 
-Platform 管理后台的日常操作、权限和结果边界见[管理后台指南](PLATFORM_ADMIN.md)。管理台修改的存储、转发策略及历史保留天数保存在 `platform_data` 卷中的 `/data/admin-policies.yaml`；升级与备份时须包含此文件。
+Platform 管理后台的日常操作、权限和结果边界见[管理后台指南](PLATFORM_ADMIN.md)。管理台修改的存储、转发策略、历史保留天数，以及确认后保存的 Registry、MQ、Relay 运行参数均保存在 `platform_data` 卷中的 `/data/admin-policies.yaml`；升级与备份时须包含此文件。
 
 升级前保留一致的 Web SQLite 备份、Platform 数据与身份、`.env`、配置和当前镜像，并记录回滚标识。主配置 `deploy/platform/config.yaml` 仍以只读方式挂载，首次升级没有覆盖文件时沿用主配置值。Web 启动入口幂等应用 [`prisma/remote-console.sql`](../../agent-collaboration-web/prisma/remote-console.sql)，为远程控制与账户工作台增加所需结构；迁移保留历史业务表，不以清库方式升级。
 
