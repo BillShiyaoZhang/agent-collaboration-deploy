@@ -14,7 +14,7 @@
 | 工作 | 参考资料 |
 | --- | --- |
 | 理解现行组件职责、授权和数据流 | [跨组件架构](architecture/OVERVIEW.md) · [产品决策](architecture/DECISIONS.md) · [双边协作与提醒](architecture/COLLABORATION_AND_ATTENTION.md) |
-| 自行部署、升级、接入已有 Hermes | [部署与升级](operations/DEPLOYMENT.md) · [Hermes 源码接入](operations/HERMES.md) · [完整接入包](../tools/release/early_access/README.md) |
+| 自行部署、管理 Platform、接入已有 Hermes | [部署与升级](operations/DEPLOYMENT.md) · [Platform 管理后台](operations/PLATFORM_ADMIN.md) · [Hermes 源码接入](operations/HERMES.md) · [完整接入包](../tools/release/early_access/README.md) |
 | 验证跨组件行为 | [测试方案](testing/TEST_STRATEGY.md) · [双 Agent 人在环验收](testing/TWO_AGENT_HITL_RUNBOOK.md) · [逐项测试步骤](testing/TEST_EXECUTION_GUIDE.md) |
 | 维护仓库及发布产物 | [仓库维护](maintenance/REPOSITORY_MAINTENANCE.md) · [发布工具](../tools/release/README.md) |
 | 查询某次上线或验收发生了什么 | [发布记录](releases/README.md) · [验证记录](verification/README.md) · [测试结果](testing/TEST_REPORT_2026-09-23.md) |
