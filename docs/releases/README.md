@@ -4,6 +4,7 @@
 
 | 日期 | 发布 | 记录内容 |
 | --- | --- | --- |
+| 2026-09-24 | [Platform 管理台功能与界面更新](PLATFORM_ADMIN_REFRESH_2026-09-24.md) | 管理台响应式改版、运行时数据与策略持久化、生产备份和验收 |
 | 2026-09-23 | [Platform API 文档归并](PLATFORM_API_DOCS_CONSOLIDATION_2026-09-23.md) | 云端 API 契约迁入 Platform `docs/`、中英双语、旧网址兼容跳转及生产复核 |
 | 2026-09-23 | [官网文档入口统一](DOCS_UNIFICATION_2026-09-23.md) | `/docs/` 按角色阅读、`/docs/api/` Platform API、四仓原文只读挂载、备份、上线与 API 文案补丁复核 |
 | 2026-09-23 | [Web SQLite 单连接缓冲与慢轮询观测 r3](WEB_SQLITE_BUFFER_RELEASE_2026-09-23.md) | Web 进程内查询缓冲、慢轮询分段计时、阿里云 Web 镜像更新与真实双 Agent 验收；官网接入包保持 r2 |
@@ -22,6 +23,6 @@
 | 2026-09-13 | [Registry ownership](REGISTRY_DEPLOYMENT_2026-09-13.md) | HTTP/libp2p 身份所有权修复、数据保留与恢复位置 |
 | 2026-09-13 | [HTTPS 登录修复](HTTPS_LOGIN_FIX_2026-09-13.md) | 安全及分块 cookie、认证回归和生产验证 |
 
-最新源码组合由根仓库递归子模块引用确定；线上运行提交和镜像须以最近一条**完成核对**的发布记录及服务器实际状态为准。[Platform API 文档归并记录](PLATFORM_API_DOCS_CONSOLIDATION_2026-09-23.md)列出当前运行代码指针和镜像；先前的[官网文档入口统一记录](DOCS_UNIFICATION_2026-09-23.md)保留首次上线状态。发布记录本身的纯文档提交不代表服务器再次切换应用代码。本次未重发官网安装包；下载版本和校验值以[官网发布清单](https://agent-communication.online/downloads/release-manifest.json)为准。
+最新源码组合由根仓库递归子模块引用确定；线上运行提交和镜像须以最近一条**完成核对**的发布记录及服务器实际状态为准。[Platform 管理台更新记录](PLATFORM_ADMIN_REFRESH_2026-09-24.md)列出当前运行代码指针和镜像；先前的[Platform API 文档归并记录](PLATFORM_API_DOCS_CONSOLIDATION_2026-09-23.md)保留上次切换状态。发布记录本身的纯文档提交不代表服务器再次切换应用代码。本次未重发官网安装包；下载版本和校验值以[官网发布清单](https://agent-communication.online/downloads/release-manifest.json)为准。
 
 新增发布记录应写清发布时的版本、检查范围、持久数据变化、运行结果和回滚位置；不将密钥、真实数据库或原始私人日志放入仓库。通用步骤在 [运维指南](../operations/DEPLOYMENT.md) 中维护。
