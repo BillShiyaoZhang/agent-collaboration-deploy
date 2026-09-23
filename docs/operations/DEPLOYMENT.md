@@ -127,6 +127,15 @@ docker compose up --build -d
 docker exec agent-nginx nginx -t
 ```
 
+四仓文档以只读挂载由 nginx 用户读取。若发布 shell 使用 `umask 077`，新检出的 Markdown 可能是 `0600`，导致 `/docs/` 阅读器获取源码时返回 403。更新源码后检查并修复公开文档的读取权限，再对实际路由做 HTTP 验证：
+
+```bash
+find docs agent-collaboration-web/docs agent-comm-platform/docs agent-comm-platform/agent-comm/docs \
+  -type f -name '*.md' -exec chmod a+r {} +
+curl -fsS https://agent-communication.online/docs/source/deploy/operations/PLATFORM_ADMIN.md >/dev/null
+curl -fsS https://agent-communication.online/docs/source/platform/guides/API.md >/dev/null
+```
+
 使用记录的子模块提交；`git submodule update --remote` 会选择另一组源码。现有服务器曾采用按清单部署的源码快照；若工作树有未提交改动，先核对 [对应发布记录](../releases/README.md) 中的清单、镜像和备份，不能直接重置工作树。
 
 修改 nginx 的 Compose 挂载时必须重建 nginx 容器；仅执行 `nginx -s reload` 不会装入新挂载。若组合启动没有重建 nginx，执行 `docker compose up -d --no-deps --force-recreate nginx`，再运行 `docker exec agent-nginx nginx -t`。

@@ -22,5 +22,6 @@
 - 生产：阿里云 ECS `i-0jleb7de83gsnoa0yuc2` 从固定提交构建并仅重建 Platform。Compose 与 nginx 配置检查通过；Platform、Web、nginx 均为 `running`，重启数均为 0。Web 与 nginx 容器 ID 未变化，Platform 当前 Peer ID 为 `12D3KooWNApwdxwbXY27N44cGxTXY15Hn8yRx9m9Yw5St5A7kTpK`。
 - 公网只读验收：`/healthz` 与 `/admin/` 返回 200，页面包含新分页消息入口；无令牌概览返回 401。使用服务器现有令牌读取概览、脱敏配置、MQ 汇总、空信箱分页、Registry 与审计均成功；配置响应不包含明文管理令牌。验收时 `restart_pending=false`、`stores_user_data=true`、`forward_to_storage_platforms=true`、Registry 17 条、MQ 待收 2 条、历史 11926 条、已过期 5 条。计数是验收时快照，会随业务变化。
 - 四个实时 SQLite 数据库在切换后的 `PRAGMA quick_check` 均为 `ok`；服务器两个 Git 工作树干净。生产没有为冒烟测试执行删除、清空、驱逐或策略修改；真实多 Agent 业务完成不在这次只读验收范围内。
+- 最终巡检发现部分仓库 Markdown 因此前的限制性检出权限为 `0600`，公开文档源码路由返回 403。已将四个只读挂载文档目录内的 Markdown 设为 nginx 可读；部署、Platform API 与本次新增的管理后台指南路由复查均返回 200，Git 内容未变。
 
 回退应用前先核对实时策略文件与旧版本的兼容性，使用保留的旧镜像和对应提交仅重建 Platform。保留实时数据卷、身份与上线后的新写入；不把上线前数据库备份直接覆盖实时库。本次没有重发官网安装包。
