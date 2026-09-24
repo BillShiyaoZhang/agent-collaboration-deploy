@@ -148,6 +148,12 @@ class DeploymentSecurity(unittest.TestCase):
             config_path.write_text(config, encoding="utf-8")
             result = docker("run", "--rm", "-d", "-p", "127.0.0.1::8080", "-p", "127.0.0.1::8081",
                             "--mount", f"type=bind,source={config_path},target=/etc/nginx/nginx.conf,readonly",
+                            "--mount", f"type=bind,source={ROOT / 'deploy/nginx/docs-source.conf'},target=/etc/nginx/docs-source.conf,readonly",
+                            "--mount", f"type=bind,source={ROOT / 'agent-collaboration-web/site'},target=/srv/site,readonly",
+                            "--mount", f"type=bind,source={ROOT / 'docs'},target=/srv/docs/deploy,readonly",
+                            "--mount", f"type=bind,source={ROOT / 'agent-collaboration-web/docs'},target=/srv/docs/web,readonly",
+                            "--mount", f"type=bind,source={ROOT / 'agent-comm-platform/docs'},target=/srv/docs/platform,readonly",
+                            "--mount", f"type=bind,source={ROOT / 'agent-comm-platform/agent-comm/docs'},target=/srv/docs/sdk,readonly",
                             os.environ.get("NGINX_TEST_IMAGE", "nginx:alpine"))
             self.assertEqual(result.returncode, 0, result.stderr)
             container = result.stdout.strip()
@@ -190,6 +196,15 @@ class DeploymentSecurity(unittest.TestCase):
                 self.assertEqual(statuses[-1], 429, statuses)
                 self.assertEqual(request("/api/auth/callback/credentials/extra", b"{}")[0], 429)
                 self.assertEqual(request("/api/auth/csrf")[0], 200)
+                for path in ("/docs/", "/docs/source/deploy/README.md",
+                             "/docs/source/deploy/users/PRIVACY_MODE_UPGRADE.md",
+                             "/docs/source/platform/guides/API.md"):
+                    self.assertEqual(request(path)[0], 200, path)
+                for path in ("/docs/source/deploy/.env",
+                             "/docs/source/deploy/testing/RETEST_PLAN_2026-09-24.md",
+                             "/docs/source/sdk/architecture/CAPABILITY_SKILL_MAP.md"):
+                    self.assertEqual(request(path)[0], 404, path)
+                self.assertEqual(request("/docs/source/deploy/README.md", b"")[0], 403)
             finally:
                 docker("rm", "-f", container)
 

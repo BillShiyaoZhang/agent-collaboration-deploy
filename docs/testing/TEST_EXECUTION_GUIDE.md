@@ -1,6 +1,6 @@
 # 测试步骤说明：两个 Agent、两边用户与整套部署链路
 
-维护基准：2026-09-22。本文是可照着执行的测试顺序，覆盖从组件回归到两个 Agent 互相通信，再到 Alice/Bob 两边用户介入和服务器升级。每个测试活动都说明目标、Codex 可代办的步骤、你必须参与的步骤、环境、流程图和它在项目链路中的位置。
+原有执行基准：2026-09-22；2026-09-24 的变更、重测范围和新增门禁见[增量测试计划](./RETEST_PLAN_2026-09-24.md)。本文是可照着执行的 T00～T12 顺序，覆盖从组件回归到两个 Agent 互相通信，再到 Alice/Bob 两边用户介入和服务器升级。每个测试活动都说明目标、Codex 可代办的步骤、你必须参与的步骤、环境、流程图和它在项目链路中的位置。执行前以实际源码、运行配置和公开安装包分别核对版本，不能把任一层的结果当作另一层已通过。
 
 ## 0. 统一角色、环境和证据
 
@@ -106,15 +106,17 @@ Codex 负责检查现有服务、生成配置差异、核实卷/端口/路由和
 
 **目标**
 
-证明这次测试使用的是正确的源码、子模块、镜像、配置和隔离数据，避免把环境问题误判为功能问题。
+分别确认本轮源码、服务器实际运行版本、v2 签名策略是否启用、公开安装包版本，以及隔离数据，避免把源码能力误判为线上或公开包能力。
 
 **Codex 可代办（C）**
 
 1. 生成 RUN_ID 和 staging 测试目录。
-2. 读取 Git 提交、三个子模块提交、镜像 digest、Compose 配置和当前服务状态。
-3. 用临时值运行 compose config，检查缺失密钥时是否按预期失败。
-4. 在已授权的 staging 服务器启动或检查 nginx、Web、Platform，保存 healthz、证书和容器日志。
-5. 检查 Alice/Bob 的 keys、mailbox、profile、端口和数据库路径是否互不相同。
+2. 分别记录根仓库及三个子模块固定提交、工作树状态，以及服务器实际运行的镜像 digest、Compose 配置和服务状态；源码提交不能替代容器版本证据。
+3. 单独记录签名 v2 策略状态：`/api/v2/policy` 是否可用、策略 epoch/摘要/模式，以及实际是否加载 v2 Compose 覆盖文件。接口返回 404 时标记为“v2 代码存在、策略未启用”，不推断隐私或合规消息已上线。
+4. 单独读取公开 `release-manifest.json`、对应 ZIP 摘要和包内 helper/runtime 版本；若另有候选包，记录其独立摘要和来源，不与现有公开包混写。
+5. 用临时值运行 compose config，检查缺失密钥时是否按预期失败。
+6. 在已授权的 staging 服务器启动或检查 nginx、Web、Platform，保存 healthz、证书和容器日志。
+7. 检查 Alice/Bob 的 keys、mailbox、profile、端口和数据库路径是否互不相同。
 
 **你只需参与（C+授权/H）**
 
@@ -130,14 +132,14 @@ E2 staging 服务器；本机可暂时不启动 Hermes。
 
 ~~~mermaid
 flowchart TD
-    A["生成 RUN_ID"] --> B["锁定根仓库和子模块提交"]
+    A["生成 RUN_ID"] --> B["分别记录源码、运行镜像、签名策略和公开包"]
     B --> C["检查 staging .env、卷、DNS 和证书"]
     C --> D["docker compose config"]
     D --> E["启动 nginx、Web、Platform"]
     E --> F["检查 /healthz、HTTPS 和容器状态"]
     F --> G{"全部通过？"}
     G -- "否" --> H["停止本轮测试并修复环境"]
-    G -- "是" --> I["记录版本清单，进入 T01/T02"]
+    G -- "是" --> I["保存四层版本清单，进入 T01/T02"]
 ~~~
 
 **在项目中的环节**
@@ -158,7 +160,7 @@ flowchart LR
 
 - staging 健康、HTTPS 和证书正确；
 - 生产数据卷没有被挂载；
-- 版本和配置可追踪；
+- 源码、服务器运行镜像、v2 签名策略状态及公开安装包分别有可追踪证据；
 - 任一服务不健康时不进入业务测试。
 
 ---
@@ -171,7 +173,7 @@ flowchart LR
 
 **Codex 可代办（C）**
 
-- 安装/检查锁文件依赖，运行 Web、Platform、SDK、runtime 和 connector 测试。
+- 安装/检查锁文件依赖，运行 Web、Platform Go 与管理台、SDK Go、Python runtime、Hermes 与 OpenClaw connector 测试。
 - 收集失败输出、测试数量、构建产物和已有 lint 警告。
 - 生成 E0 result.json，并标记阻断项。
 
@@ -196,10 +198,16 @@ npm run build
 
 cd ../agent-comm-platform
 go test ./...
+node --test tests/admin_accessibility.test.cjs tests/admin_functionality.test.cjs tests/admin_security.test.cjs tests/admin_workflows.test.cjs
 
 cd agent-comm
+go test ./...
 python -m unittest discover -s python/tests -q
 python -m unittest discover -s connectors/hermes-platform/tests -v
+
+cd connectors/openclaw-channel
+npm ci
+npm test
 ~~~
 
 **流程**
@@ -209,8 +217,8 @@ flowchart TD
     A["安装锁定依赖"] --> B["Web 单元与契约测试"]
     B --> C["Web lint/build"]
     C --> D["Platform Go 测试"]
-    D --> E["SDK/runtime Python 测试"]
-    E --> F["Hermes connector 测试"]
+    D --> E["Platform 管理台 Node 与 SDK Go 测试"]
+    E --> F["Python runtime、Hermes 与 OpenClaw 测试"]
     F --> G{"有失败、未解释 skip 或构建错误？"}
     G -- "是" --> H["阻断后续测试"]
     G -- "否" --> I["生成 E0 报告"]
@@ -225,6 +233,8 @@ flowchart LR
     SDKGO["agent-comm-platform/agent-comm"] --> GO["Go packages"]
     RUNTIME["agent-comm-platform/agent-comm/python"] --> PY["Python runtime"]
     HERMES["connectors/hermes-platform"] --> PY
+    ADMIN["Platform 管理台"] --> NODE
+    OPENCLAW["connectors/openclaw-channel"] --> NODE
     NODE --> GATE["E0 合并门禁"]
     GO --> GATE
     PY --> GATE
@@ -232,9 +242,9 @@ flowchart LR
 
 **通过条件**
 
-- Web 当前基线 173 个测试全部通过；
+- Web 当前提交的全部测试通过；记录实际测试数量，不沿用旧版本的固定数量；
 - Web lint/build 通过；已有警告必须记录；
-- Platform、SDK、runtime、connector 没有新增失败；
+- Platform Go 与管理台、SDK Go、runtime、Hermes 与 OpenClaw connector 没有新增失败；
 - T01 不通过时不执行 E1/E2。
 
 ---
@@ -243,14 +253,14 @@ flowchart LR
 
 **目标**
 
-不调用模型，验证 Alice Agent 和 Bob Agent 的真实 helper/Platform 收发、好友握手、消息、已读和在线状态。
+不调用模型，分开验证旧 v1 社交能力兼容路径，以及新版 helper 在签名 v2 策略下的双 Agent 收发；两条路径使用不同的 helper 版本与判定条件。
 
 **Codex 可代办（C）**
 
 1. 创建随机临时目录、两个 helper key、临时 SQLite 和随机端口。
-2. 启动临时 Platform、helper A、helper B，运行组合测试命令。
+2. 为旧 v1 回归准备与其匹配的旧版 helper；为 v2 准备当前 helper、Platform 和离线策略签发工具，分别启动隔离进程并运行对应组合测试。
 3. 自动轮询 /info、Registry、MQ、Store、attention 和 presence。
-4. 读取 result.json 和 A/B/Platform 日志，检查同一个 message_id 是否只产生一次业务记录。
+4. 读取 result.json 和 A/B/Platform 日志，检查同一个 message_id 是否只产生一次业务记录，并区分本机接受、平台准入、收件方持久接收及业务结果。
 
 **你只需参与（C+授权）**
 
@@ -263,12 +273,22 @@ E1。本地真实 Go Platform、两个 helper、临时 SQLite 和随机端口；
 
 **执行步骤**
 
+旧 v1 好友、消息、已读与 presence 回归使用**旧版 helper 二进制**；新版 helper 的普通本机 `/api/v1/mq/store` 会按迁移策略拒绝，不能将其传给这条脚本：
+
 ~~~sh
 python tests/integration/test_agent_web_parity_network.py \
-  --helper PATH_TO_HELPER --platform PATH_TO_PLATFORM
+  --helper PATH_TO_OLD_V1_HELPER --platform PATH_TO_PLATFORM
 ~~~
 
-该脚本会建立 Alice/Bob 临时身份，验证 Web 控制身份、联系人请求、Bob 接受、双向消息、共享已读和 presence。
+该脚本会建立 Alice/Bob 临时身份，验证 Web 控制身份、联系人请求、Bob 接受、双向消息、共享已读和 presence。新增的 v2 路径使用当前三件二进制，在本机隔离环境签发策略并测试双 helper；它不调用生产 Platform：
+
+~~~sh
+python tests/integration/test_v2_gateway_network.py \
+  --platform PATH_TO_PLATFORM --helper PATH_TO_NEW_HELPER \
+  --policy-tool PATH_TO_V2_POLICY_TOOL
+~~~
+
+v2 验收包含 `private` 握手、策略 epoch 切换、双端合规授权、网关回执和旧队列隔离；其中脚本执行的授权只模拟测试身份，不等于真实用户已同意。真实 Hermes 与 HTTPS 用户流程在 E2 单独验收，详见[增量测试计划](./RETEST_PLAN_2026-09-24.md)。
 
 **流程**
 
@@ -294,6 +314,8 @@ sequenceDiagram
     T-->>T: 检查双方 Store、attention、presence
 ~~~
 
+上图是旧 v1 社交回归流程；v2 的签名策略、握手和网关路径按本节独立进程测试执行，不能以旧图或旧 helper 的结果代替。
+
 **在项目中的环节**
 
 ~~~mermaid
@@ -311,7 +333,7 @@ flowchart LR
 **通过条件**
 
 - Bob 接受后双方都为 connected；
-- Web/native 消息使用同一个 message_id；
+- 旧 v1 回归中的 Web/native 消息使用同一个 message_id；v2 路径的消息与回执绑定相同的稳定 ID 和当前策略；
 - 已读和提醒终态在双方一致；
 - 重试、重放、错目标和伪造请求不产生第二次业务副作用。
 
@@ -504,6 +526,28 @@ flowchart LR
 - 如果只验证协议和状态机，T02/fixture 已足够，Bob 的回复可以由 Codex 自动完成，不需要你重复操作。
 - Alice Web 的“标记已读”可以由 Codex 操作；若要验证用户判断，可以由你确认页面内容后再点击。
 
+**你参与的步骤（真人体验分支）**
+
+~~~mermaid
+flowchart TD
+    S["Codex 准备 A/B 会话和测试消息"] --> Q{"本轮验收真人原生体验？"}
+    Q -- "否" --> N["你无需操作；Codex 验证收发和状态"]
+    Q -- "是" --> B1["切换到 Bob 的 Hermes profile"]
+    B1 --> B2["阅读 Alice 来信，核对发送者、正文和未读提醒"]
+    B2 --> B3["在 Bob 原生会话中理解并回复"]
+    B3 --> A{"亲自验收 Alice Web 的阅读判断？"}
+    A -- "是" --> A1["切换到 Alice Web，核对回复并点击标记已读"]
+    A -- "否" --> A2["Codex 代办 Web 已读"]
+    A1 --> R{"还验收反向原生体验？"}
+    A2 --> R
+    R -- "是" --> R1["切换到 Alice Hermes，阅读 Bob Web 来信并回复"]
+    R -- "否" --> C1["Codex 代跑反向用例"]
+    R1 --> C2["Codex 核对双方状态"]
+    C1 --> C2
+~~~
+
+一人扮演两侧时，每次都要切回对应的 Hermes profile 和 Web 登录；Codex 的自动回复或已读可证明协议状态，不能记成真人阅读体验。
+
 **环境**
 
 E2 staging；两个 helper；两个 Web 账户；两个 Hermes profile；双方已 connected。
@@ -580,6 +624,31 @@ flowchart LR
 - Bob 必须在具体审批卡中接受或拒绝；接受和拒绝两种分支要分开记录。
 - 若用 Web approval.respond，必须由你确认 approval_id、内容、版本、期限后点击；Codex 不能把自然语言“可以”转换成批准。
 
+**你参与的步骤（真人决定验收）**
+
+~~~mermaid
+flowchart TD
+    S["Codex 准备具体提议和确认卡"] --> A1["以 Alice 身份核对接收人、范围、资料版本、时间和期限"]
+    A1 --> A2["明确确认发起这一个提议"]
+    A2 --> C["Codex 将对应审批卡呈现给 Bob"]
+    C --> B1["切换到 Bob 原生会话或 Bob Web"]
+    B1 --> B2["核对具体事项、范围、版本和期限"]
+    B2 --> W{"使用 Bob Web 审批？"}
+    W -- "是" --> W1["再核对 approval_id"]
+    W -- "否：原生卡" --> D{"本轮 Bob 的独立决定"}
+    W1 --> D
+    D -- "接受" --> Y["在这张审批卡点击接受"]
+    D -- "拒绝" --> N["在这张审批卡点击拒绝"]
+    Y --> V["Codex 对账双方状态和审计记录"]
+    N --> V
+    V --> R{"接受与拒绝已分别验收？"}
+    R -- "否" --> S2["Codex 创建新的独立提议"]
+    S2 --> A1
+    R -- "是" --> E["记录两次决定及观察到的结果"]
+~~~
+
+接受和拒绝必须用不同提议分别运行；Alice 的确认不能替 Bob 决定，聊天里说“可以”也不是审批。临时账户若预先约定固定选择，可由 Codex 点击并验证状态，但该路径不计为真人决定体验。
+
 **环境**
 
 E2 staging；两个真实 Hermes profile；两个 helper；匹配版本的 runtime、connector 和 Web；至少一侧允许 approval.respond。
@@ -644,6 +713,24 @@ flowchart LR
 - 提供或确认模型账户、调用费用、测试 prompt 和“无外部副作用”边界。
 - 如果要验证真实用户发起，Codex 可以填好 prompt 并暂停；由你确认并点击发送。
 - 你需要对真实模型回答做最终语义判断；Codex 只能检查状态、关联字段和是否重复执行。
+
+**你参与的步骤**
+
+~~~mermaid
+flowchart TD
+    S["Codex 准备测试模型和无副作用 prompt"] --> H1["确认模型账户、调用费用、prompt 和无外部副作用范围"]
+    H1 --> Q{"要验收本人从 Web 发起？"}
+    Q -- "是" --> H2["核对 Web 中预填的 prompt 并点击发送"]
+    Q -- "否" --> C1["Codex 代为提交请求"]
+    H2 --> C2["Codex 跟踪真实 Hermes 回合与请求状态"]
+    C1 --> C2
+    C2 --> R{"得到真实模型的最终回答？"}
+    R -- "是" --> H3["阅读回答，判断语义是否符合 prompt"]
+    H3 --> H4["反馈通过或具体偏差"]
+    R -- "否" --> C3["Codex 记录失败或结果不确定；暂不做语义判定"]
+~~~
+
+只有点击发送这一步是可选的真人发起验收；模型账户和费用边界、最终回答的语义判断仍由你确认。Bob 不参与本测试。
 
 **环境**
 
@@ -843,6 +930,35 @@ flowchart LR
 - 你可以抽查一个 320px 和一个真实手机流程；其余尺寸由 Codex 自动覆盖。
 - 如果通知权限已被系统永久拒绝，由你决定是否修改浏览器设置后重跑。
 
+**你参与的步骤（系统与真实设备体验）**
+
+~~~mermaid
+flowchart TD
+    S["Codex 准备提醒和桌面/窄屏自动检查"] --> P{"出现浏览器通知权限弹窗？"}
+    P -- "是" --> H1["选择允许或拒绝，并判断提示是否易懂"]
+    P -- "否" --> C1["Codex 检查当前权限状态"]
+    H1 --> A{"当前通知权限允许？"}
+    C1 --> A
+    A -- "是" --> H2["查看 OS 通知中心，切换勿扰模式并观察真实表现"]
+    H2 --> H3["核对摘要不泄露正文，点击后仅打开对应事项"]
+    A -- "否" --> H0["可选：观察系统无通知；Codex 验证站内提醒"]
+    H3 --> M1{"抽查 320px 操作？"}
+    H0 --> M1
+    M1 -- "是" --> H4["在 320px 窄屏完成关键操作并反馈可读性"]
+    M1 -- "否" --> C2["Codex 自动覆盖 320px"]
+    H4 --> M2{"抽查真实手机？"}
+    C2 --> M2
+    M2 -- "是" --> H6["在真实手机完成关键操作并反馈体验"]
+    M2 -- "否" --> C3["Codex 保留桌面和窄屏自动化结果"]
+    H6 --> R{"通知权限被永久拒绝？"}
+    C3 --> R
+    R -- "是" --> H5["决定是否修改浏览器设置并重跑"]
+    R -- "否" --> E["反馈实际通知和操作体验"]
+    H5 --> E
+~~~
+
+真实手机是可选抽查；320px/390px 布局、键盘导航和 ARIA 检查默认由 Codex 自动覆盖。通知点击不能代替接受好友、批准事项或发送消息。
+
 **环境**
 
 E2 staging；Chrome/Edge；可选真实手机；已产生好友请求、普通消息和审批提醒。
@@ -962,14 +1078,23 @@ flowchart LR
 
 这里的“干净环境”是一个可工作的 Hermes 测试安装，拥有独立 Python 环境和新 profile：解释器中没有 `agent-comm-runtime`/`hermes-platform-agent-comm`，profile 中没有旧 helper 身份、mailbox、协作库、插件或远程 pairing。只创建空 profile、继续使用已装 connector 的 Python，不能算干净安装。当前接入包以“已有可用 Hermes”为前提，Codex 可以先在 VM/容器或本机独立目录准备纯 Hermes 基线，再保存快照；每条失败用例都从这个基线开始。
 
+按安装包来源分两条独立轨道记录结果：
+
+| 轨道 | 本轮实际对象 | 通过条件的边界 |
+| --- | --- | --- |
+| 现有公开 r2 首装 | 官网 `release-manifest.json` 指向的 ZIP 和包内旧版 helper | 验证用户目前确实能下载、校验、安装并完成 Web 配对和旧协议兼容流程；不能记为 v2 新版安装已通过。 |
+| 未来 v2 候选包首装 | 单独构建、签名并记录摘要的候选 ZIP；在实际发布前不冒充官网包 | 除安装与 Web 配对外，还须在隔离 staging 部署有效签名策略，并从独立可信渠道核对、固定策略根、Platform Peer ID 和对端完整身份公钥。未具备这些前提时，新 helper 拒绝普通 Agent 间发送是预期结果，不能靠重建身份或退回 v1 使测试“通过”。 |
+
+2026-09-24 的 v2 代码已经部署，但生产尚未启用签名策略，公开接入 ZIP 也未重发；当前公网不能作为候选 v2 消息成功的验收环境。源码安装或本地模拟通过不得替代候选 ZIP 首装证据。
+
 **Codex 可代办（C/C+授权）**
 
 1. 准备独立 Hermes 安装/解释器/profile，记录安装前包清单与文件清单，确认旧 runtime/connector 不存在；检查 Python 3.11+、Hermes 宿主依赖、系统架构、端口和网络。临时 OS 用户也要有独立解释器，不能继承机器全局的 agent-comm 包。
-2. 从本次候选版本的下载入口取得系统对应完整 ZIP 和外部 `release-manifest.json`，先核对 ZIP 摘要，再解压检查包内 `SHA256SUMS.json`、helper 和两个 wheel；源码脚本目录不能代替接入包。
+2. 先选择并标记上述轨道。公开 r2 取官网完整 ZIP 与其外部 `release-manifest.json`；未来 v2 候选包取独立候选清单与完整 ZIP。两者分别核对 ZIP 摘要、包内 `SHA256SUMS.json`、helper 和两个 wheel；源码脚本目录不能代替任一接入包。
 3. 使用测试 Hermes 的 Python 运行 `install.py --check-only`。该命令验证包内文件、wheel 元数据及 helper 对应的 OS/CPU；它不证明 Hermes 宿主依赖完整。跨平台发布构建器可显式加 `--cross-platform-check` 做只读完整性检查，首装测试不得使用该选项绕过宿主匹配校验。
 4. 使用指定的临时 Hermes home、解释器、staging HTTPS origin、helper 端口和 1 天期限执行 `onboard_hermes.py`；它内部执行安装，然后初始化 helper、签名注册并生成 claim。首装主路径不预先手动安装，以便覆盖真实自动安装过程。
 5. 打开测试账户的 claim 页面，核对已登录账户、Agent、方法与到期时间。新增 Agent 权限的浏览器操作需要在点击时确认；你确认本次页面列出的范围后，Codex 可代为点击。真人 UX 验收时则由你亲自检查和点击。Console URN 在完成后的配对状态中核对，当前 claim 页面不展示它。
-6. 轮询 `--status`、helper `/info`、Platform 注册、Gateway 状态及 Web capabilities；等待本机连接完成后发送已约定的纯文字回显，核对真实回答与 completed，再验证重复运行和进程重启恢复。
+6. 轮询 `--status`、helper `/info`、Platform 注册、Gateway 状态及 Web capabilities；等待本机连接完成后发送已约定的纯文字 Web 控制回显，核对真实回答与 completed，再验证重复运行和进程重启恢复。若测试候选 v2 Agent 间消息，还要单独核对两端 `/api/v2/disclosure` 和收件结果：签名策略、可信固定及本机许可缺失时不得发送。`platform_queued` 或 Web 控制回显不能代替对端 Agent 完成。
 7. 保存版本、摘要、URN、权限、期限和脱敏日志。`onboarding.json` 含 poll secret，只读必要状态字段，不整份复制进报告。完成证据采集后撤销测试配对，停止本轮 Gateway/helper/后台任务及服务，再清理运行目录。
 
 **你需要参与的部分（H；新增网页授权需当次确认）**
@@ -980,7 +1105,7 @@ flowchart LR
 
 **环境**
 
-E2 的已有阿里云测试服务；本机独立安装或可恢复快照的 VM/容器；可工作的纯 Hermes、独立 Python 和 profile；匹配系统的完整接入 ZIP；测试 HTTPS 域名、Web 账户及模型访问。第一轮覆盖实际使用的 OS；声称支持的其它系统在对应原生环境另跑，不能把 Linux 容器通过当作 Windows/macOS 通过。
+E2 的已有阿里云测试服务；本机独立安装或可恢复快照的 VM/容器；可工作的纯 Hermes、独立 Python 和 profile；所选轨道对应系统的完整接入 ZIP；测试 HTTPS 域名、Web 账户及模型访问。候选 v2 Agent 间消息另需隔离且已启用签名策略的 Platform、带外核对的根/Peer ID/双方身份公钥，以及合规模式下双方主人对精确策略的本机授权。第一轮覆盖实际使用的 OS；声称支持的其它系统在对应原生环境另跑，不能把 Linux 容器通过当作 Windows/macOS 通过。
 
 **推荐执行步骤**
 
@@ -1022,7 +1147,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Onboarding failed; preserve evidence' }
 ~~~mermaid
 flowchart TD
     A["Codex 准备纯 Hermes、独立 Python 和新 profile"] --> B["检查无旧包、系统架构和网络"]
-    B --> C["核对 release-manifest 与 SHA256"]
+    B --> C["按公开 r2 或候选 v2 轨道核对清单与 SHA256"]
     C --> D{"校验通过？"}
     D -- "否" --> E["停止，不安装"]
     D -- "是" --> F["install.py --check-only"]
@@ -1043,7 +1168,7 @@ flowchart TD
 
 ~~~mermaid
 flowchart LR
-    BUNDLE["官网接入 ZIP / release-manifest"] --> VERIFY["install.py 校验"]
+    BUNDLE["公开 r2 或候选 v2 ZIP / 对应清单"] --> VERIFY["install.py 校验"]
     VERIFY --> PY["Hermes Python runtime + connector"]
     BUNDLE --> HELPER["onboard 启动包内 Go helper"]
     HELPER --> REGISTER["Platform Registry 注册新 URN"]
@@ -1057,11 +1182,12 @@ flowchart LR
 **通过条件**
 
 - 安装前包清单与 profile 清单证明没有复用旧 runtime/connector、身份、pairing 或 mailbox；
-- ZIP 与候选发布清单一致，包内文件符合 SHA256；篡改在安装前失败，OS/架构核验单独记录；
+- ZIP 与其所属轨道的清单一致，包内文件符合 SHA256；篡改在安装前失败，OS/架构核验单独记录；公开 r2 与候选 v2 不合并为一个通过结果；
 - runtime 和 connector 安装到运行 Hermes 的同一个 Python；
 - helper 生成新 URN 并在 staging Platform 注册，helper 只绑定 loopback；
 - claim 页面显示真实 Agent、方法与短期限，正确账户确认后才建立配对；完成后核对 Console URN，错误账户/未确认场景没有获得权限；
 - Gateway 报告 agent_comm connected，Web 能读取 capabilities 并完成安全回显；
+- 候选 v2 Agent 间消息另有签名策略、带外可信固定、双方披露状态和最终收件证据；缺少条件时明确记录拒绝原因，不将旧 v1、Web 控制通道或模拟授权算成真实合规验收；
 - 重跑不创建第二个身份或无意扩权，未确认/过期 claim 不会被当作成功；
 - 安装日志、配置备份和临时数据可定位并能安全清理。
 

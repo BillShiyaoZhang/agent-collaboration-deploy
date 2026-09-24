@@ -1,6 +1,6 @@
 # 跨仓库验证
 
-完整的环境分层、能力追踪、网页添加联系人用户旅程、Hermes 真实验收和发布门禁见[系统测试方案](../docs/testing/TEST_STRATEGY.md)；两个 Agent 与两边用户的逐步操作见[双 Agent 人在环 Runbook](../docs/testing/TWO_AGENT_HITL_RUNBOOK.md)；按编号执行的测试清单见[测试步骤说明](../docs/testing/TEST_EXECUTION_GUIDE.md)。
+本轮 2026-09-24 新源码与公开旧安装包的版本边界、重测矩阵和 v2/管理台新增门禁见[变更后系统性复测方案](../docs/testing/RETEST_PLAN_2026-09-24.md)，实际执行状态见[2026-09-24 自动化复测记录](../docs/testing/TEST_REPORT_2026-09-24.md)。原有环境分层、能力追踪与用户旅程见[系统测试方案](../docs/testing/TEST_STRATEGY.md)；两个 Agent 与两边用户的逐步操作见[双 Agent 人在环 Runbook](../docs/testing/TWO_AGENT_HITL_RUNBOOK.md)；T00～T12 见[测试步骤说明](../docs/testing/TEST_EXECUTION_GUIDE.md)，T13～T21 见[新增测试执行卡](../docs/testing/ADDITIONAL_CASES_2026-09-24.md)。
 
 本目录放需要组合 SDK/helper 与 Platform 的检查；组件自身的单元测试留在组件仓库。
 

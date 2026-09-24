@@ -1,6 +1,6 @@
 # Agent Collaboration 系统测试方案
 
-维护基准：2026-09-22。本文把 SDK、Platform、Web、Hermes 和部署入口放进同一套测试门禁，适用于本仓库当前固定的子模块版本。它定义环境、数据、用户旅程、自动化入口、真实验收和发布证据；组件内部的具体断言仍留在各自子模块。
+原有基准：2026-09-22。本文件保留 T00～T12 的分层、用户旅程和发布原则；2026-09-24 新源码、已部署但未启用的 v2 策略、旧公开安装包及新增 T13～T21 的范围和门禁，以[变更后系统性复测方案](RETEST_PLAN_2026-09-24.md)为准。组件内部的具体断言仍留在各自子模块，历史测试数量和路径不能直接当作本轮完成证据。
 
 ## 1. 测试目标和判定原则
 
@@ -21,7 +21,7 @@ Web 显示旧快照 != agent 当前在线或当前配对仍有效
 
 每一条端到端用例至少保存请求 ID、agent/console URN、时间、最终业务状态和日志路径。HTTP 200、submitted、accepted 或 MQ ACK 不能单独作为业务成功判定。
 
-逐项执行步骤、每一步由 Codex 还是你完成、每项测试的 Mermaid 流程图和项目环节图见[测试执行指南](./TEST_EXECUTION_GUIDE.md)。本文保留测试分层和发布门禁，执行时以该指南中的 T00～T12 为准。
+原 T00～T12 的逐项步骤、Codex/人工分工及 Mermaid 图见[测试执行指南](./TEST_EXECUTION_GUIDE.md)；新增 T13～T21 的范围和阶段门禁见[增量方案](RETEST_PLAN_2026-09-24.md)，操作卡与流程图见[新增测试执行卡](ADDITIONAL_CASES_2026-09-24.md)。执行时要同时核对对应组件的现行测试说明。
 
 ## 2. 测试拓扑
 
@@ -131,7 +131,7 @@ npm run lint
 npm run build
 ~~~
 
-当前基线的 npm test 有 173 个测试，覆盖共享 client contract、协议签名/加密、NextAuth、Origin/输入大小、密码升级、真实 SQLite 迁移、远程控制、同步 worker、重试和推送；数量变化以源码为准，不能把数量当作覆盖率。
+原 2026-09-22 基线的 `npm test` 有 173 个测试；本轮须以当前提交的实际输出为准。测试范围已扩展到 v2 策略、披露/确认、受管证书和新迁移，不能把测试数量当作覆盖率或真实浏览器验收。
 
 浏览器和本地 fixture：
 
@@ -155,20 +155,20 @@ node tests/integration/accessibility-browser.cjs
 
 ### 4.4 跨组件本地组合
 
-先构建 Web、Platform 和 helper，再运行：
+以下远程控制/社交脚本按**旧 v1 协议回归**运行，须使用与之匹配的旧 helper 二进制；当前新版 helper 的普通 v1 发送入口会按迁移规则拒绝。先准备相应 Web、Platform 与旧 helper，再运行：
 
 ~~~sh
 python tests/integration/test_remote_control_network.py \
-  --helper PATH_TO_HELPER --platform PATH_TO_PLATFORM
+  --helper PATH_TO_OLD_V1_HELPER --platform PATH_TO_PLATFORM
 
 python tests/integration/test_agent_web_parity_network.py \
-  --helper PATH_TO_HELPER --platform PATH_TO_PLATFORM
+  --helper PATH_TO_OLD_V1_HELPER --platform PATH_TO_PLATFORM
 
 python agent-collaboration-web/tests/integration/full_stack_smoke.py \
-  --helper PATH_TO_HELPER --platform PATH_TO_PLATFORM --node PATH_TO_NODE
+  --helper PATH_TO_OLD_V1_HELPER --platform PATH_TO_PLATFORM --node PATH_TO_NODE
 ~~~
 
-三者分别验证真实加密 RPC、方法权限/撤销、自动注册、网页添加联系人、好友接受、双端消息、共享已读、在线状态、数据库投影和 Web 账户隔离；都不调用模型或生产服务。
+以上 v1 脚本分别验证真实加密 RPC、方法权限/撤销、自动注册、网页添加联系人、好友接受、双端消息、共享已读、在线状态、数据库投影和 Web 账户隔离；都不调用模型或生产服务。当前新版 helper/Platform 的 v2 路径另用 `tests/integration/test_v2_gateway_network.py` 与 `--policy-tool` 在隔离进程中测试；签名策略下的真实 Web、Hermes 和浏览器验收见[增量复测方案](RETEST_PLAN_2026-09-24.md)。
 
 ### 4.5 部署安全和入口
 
