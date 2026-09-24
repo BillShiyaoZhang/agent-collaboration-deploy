@@ -133,6 +133,8 @@ docker exec agent-nginx nginx -t
 docker exec agent-nginx nginx -s reload
 ```
 
+上述在线构建命令需要足够的内存。现有阿里云 ECS 仅有 1.8 GiB 内存；2026-09-25 的 Web `next build` 即使已有 swap，仍触发全局 OOM，杀掉 Docker 守护进程并停止所有线上容器。该主机升级 Web 时应在另一台 Linux/amd64 Docker 主机（本机 Docker Desktop 的 Linux 引擎也可）从**固定 Web 子模块提交**构建生产镜像，再 `docker save`、压缩并校验 SHA-256 后传到服务器。服务器先对 Web SQLite 做在线备份并保留旧镜像标签，校验上传文件，再 `docker load`、核对镜像 ID/架构/源码修订，将其标记为 Compose 使用的 `agent-collaboration-deploy-web:latest`，最后执行带 v2 覆盖文件的 `docker compose up -d --pull never --no-deps --no-build --force-recreate web`。立即对 nginx 执行配置检查与 reload，再验证公网、策略、Web 镜像和四库完整性。镜像加载同样需要磁盘与 swap 余量；本次实际回退和成功切换见 [v0.8.0 发布记录](../releases/V2_CLIENT_RELEASE_2026-09-24.md)。
+
 nginx 使用静态解析的 Compose 上游地址。Platform 或 Web 容器重建后，旧上游 IP 可能仍留在运行中的 nginx 配置；先执行 `nginx -t` 并 reload，再从公网检查 HTTPS 健康和业务 API。2026-09-24 首次 v2 切换就因遗漏 reload 导致健康检查失败而自动回退；补上 reload 后重新切换成功。仅重载 nginx 不会重新装入新增的 Compose 挂载，挂载变化仍须按下文重建 nginx 容器。
 
 四仓文档以只读挂载由 nginx 用户读取。若发布 shell 使用 `umask 077`，新检出的 Markdown 可能是 `0600`，导致 `/docs/` 阅读器获取源码时返回 403。更新源码后检查并修复公开文档的读取权限，再对实际路由做 HTTP 验证：
