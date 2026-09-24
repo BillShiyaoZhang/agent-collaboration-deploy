@@ -31,6 +31,8 @@
 
 另以两套**全新公开 v0.8.0 安装**执行线上合规联系人闭环，脱敏结果位于 `build/live-two-agent-acceptance/live-20260925-compliance-e2-contact/`，结果 **PASS**。两侧分别完成合成 Web 账户披露确认与连接认领、对端完整公钥固定和精确策略本机授权；Alice 从 Web `contacts.add` 发起，Bob 在本机 `contacts.requests` 收到请求并由合成身份明确接受，最终两边 `contacts.list` 均为 `connected`。随后双向发送消息并同步已读，各主人侧 8 轮，共 203 次 HTTPS 请求、0 次 Web 5xx，p95 为 782 毫秒、最大 1329 毫秒。测试用临时凭据与进程已撤销、移除；这只验证自动化机制，**不等于真人完成 T05 的好友与消息体验验收**。
 
+另用独立的全新合成双 Agent/Web 身份验证拒绝分支，`build/live-two-agent-acceptance/live-20260925-compliance-e2-reject/contact-reject-result.json` 为 **PASS**：Bob 实际收到 Alice 的请求并明确拒绝，Alice 随后看到 `rejected`，Bob 未建立联系人连接；46 次 HTTPS 请求、0 次 Web 5xx。该轮的两端临时凭据与进程也已撤销、移除。接受与拒绝是两轮不同的请求和身份，没有把同一次请求写成两种结果。
+
 线上合规 harness 的前两轮曾报告 **FAIL**，定位为测试脚本重启 helper 时遇到瞬时 `ConnectionResetError`。脚本加入有界重试后，以第三套全新身份重跑通过；前两轮失败不能抹去，也不将其误写成合规协议或产品门禁失败。脱敏测试结果在上述忽略提交的本机目录，身份私钥、临时凭据和原始私人日志不进入仓库。
 
 本次记录没有真实用户公告送达、Web 确认或任一 Agent 本机合规授权的证据；需要本人参与的 T05、T06、T07、T10 仍按[测试步骤](../testing/TEST_EXECUTION_GUIDE.md)单独执行。联系人闭环覆盖了部分持续请求，但当前合规策略下 **T21 完整的 12 路并发与故障注入尚未测试**，不能由上面的 8 轮/人推断其通过。现网未来续签须签更高 epoch，并按[迁移指南](../operations/V2_MIGRATION.md)处理旧队列和重新授权，不能重放 epoch 1 策略或清库绕过严格门禁。
