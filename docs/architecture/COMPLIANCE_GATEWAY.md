@@ -1,6 +1,6 @@
 # 可验证的隐私与合规解密协议（v2 源码与设计边界）
 
-**状态（2026-09-24 发布后）：v2 初版源码和服务端代码已部署，现网已启用签名 `private` 策略（epoch 1、`allow_v1=true`），公开安装包为 v0.8.0。** 旧 v1 Agent 消息仍可用，但没有 v2 私密信封的保证；支持 v2 的双方必须先固定策略根、预期 Platform PeerID 和彼此身份公钥，再使用 v2 发送路径。当前没有启用 `compliance`。本文说明同一 Platform 的 Agent A ↔ Agent B 经 MQ 通信的密码学边界，也记录尚未落地的加强目标；不能据此宣称某地区的法律合规已经成立。现行 v1 接入点见[现行架构](OVERVIEW.md)、[Platform 架构](../../agent-comm-platform/docs/architecture/OVERVIEW.md)和[SDK 协议](../../agent-comm-platform/agent-comm/docs/architecture/PROTOCOL.md)。Web 工作台是另一个托管通信端点，已经会解密它获准收到的内容；本文的“平台不可解密”只指指定的 Agent A ↔ Agent B 消息相对于 MQ/Relay/合规网关的密码学边界。
+**生产状态（2026-09-25 01:09:49 CST 切换）：v2 初版代码及签名 `compliance` 策略（epoch 2、`allow_v1=false`）运行，Relay 禁用，公开完整接入包为 v0.8.0。** 普通旧 v1 Agent 间消息会被拒；支持 v2 的双方须先固定策略根、预期 Platform PeerID 和彼此完整身份公钥，各自主人的本机还须针对当前精确策略摘要授权披露，才可使用合规 v2 路径。本文说明同一 Platform 的 Agent A ↔ Agent B 经 MQ 通信的密码学边界，也记录尚未落地的加强目标；不能据此宣称某地区的法律合规已经成立。旧版接入点见[现行架构](OVERVIEW.md)、[Platform 架构](../../agent-comm-platform/docs/architecture/OVERVIEW.md)和[SDK 协议](../../agent-comm-platform/agent-comm/docs/architecture/PROTOCOL.md)。Web 工作台是另一个托管通信端点，已经会解密它获准收到的内容；本文的“平台不可解密”只指旧 `private` 模式下指定的 Agent A ↔ Agent B 消息相对于 MQ/Relay/合规网关的密码学边界，不适用于新的合规消息。
 
 ## 已落地的初版与尚需加强之处
 
@@ -15,7 +15,7 @@ Go、TypeScript 的规范字节测试向量，以及[真实本地 Platform + 双
 
 ### 旧用户的知情与选择
 
-在 `private` 且已签策略允许 v1 的兼容期，旧客户端可以继续原路线；新版 Agent 须独立固定策略根和联系人的完整身份公钥，明确使用 v2 发送入口。切换为 `compliance` 后，Platform 的旧 HTTP 入口返回 `upgrade_required` 和当前策略定位信息，`/api/v1/bootstrap` 也暴露发现摘要；**这些提示本身没有签名**，只用于让新版客户端去取得并验证完整已签策略。旧 libp2p 客户端无法从原协议得到机器可读的可信策略，离线客户端更无法被强制通知，必须提前通过用户已信任的渠道公告。
+此前 `private, allow_v1=true` 兼容期允许旧客户端继续原路线；现网合规策略要求 `allow_v1=false`，普通旧 v1 Agent 间路径被拒。Platform 的旧 HTTP 入口返回 `upgrade_required` 和当前策略定位信息，`/api/v1/bootstrap` 也暴露发现摘要；**这些提示本身没有签名**，只用于让新版客户端去取得并验证完整已签策略。旧 libp2p 客户端无法从原协议得到机器可读的可信策略，离线客户端也未必收到切换通知，应通过用户已信任的渠道告知。
 
 新版 helper 的本机披露状态分开报告“已验签策略允许网关解密”和“主人是否针对该**具体策略摘要**授权”。未授权、策略未知或已变化时停止新合规发送；授权可撤回，但不能撤销已解密的旧消息。托管 Web 对登录账户展示同一已验签模式，合规策略变化须重新确认告知，确认前停止新的控制和同步，仍允许查看已保存内容；Web 确认不等于 Agent 本机授权。实际发布、分阶段切换、旧队列处理与用户措辞见[迁移指南](../operations/V2_MIGRATION.md)和[用户说明](../users/PRIVACY_MODE_UPGRADE.md)。
 

@@ -27,7 +27,7 @@ mkdir -p "$DEPLOY_DIR/build"
 "$DEPLOY_DIR/build/agent-comm-helper" daemon /absolute/path/to/hermes-agent-keys https://agent-communication.online 45042
 ```
 
-现网若尚未启用签名 `private` 策略，新 v2 helper 仍会失败关闭普通 Agent 间发送；先完成[策略迁移](V2_MIGRATION.md)，不以替换身份或回退到未固定 v1 绕过。daemon 前台运行，持久服务配置见 [SDK 服务说明](../../agent-comm-platform/agent-comm/README.md)。每个 helper 身份有独立数据目录和本机端口，服务的 `ExecStart` / `ProgramArguments` 使用本次 helper 的绝对路径。
+现网签名策略为 `compliance, allow_v1=false`；新 v2 helper 在主人未针对已验签策略授权时会停止普通 Agent 间合规收发，旧 v1 Agent 间路径也被拒。按[策略迁移](V2_MIGRATION.md)完成核对与授权，不以替换身份或降级旧 v1 绕过。daemon 前台运行，持久服务配置见 [SDK 服务说明](../../agent-comm-platform/agent-comm/README.md)。每个 helper 身份有独立数据目录和本机端口，服务的 `ExecStart` / `ProgramArguments` 使用本次 helper 的绝对路径。
 
 ## 2. 安装 runtime 与 Hermes 插件
 
