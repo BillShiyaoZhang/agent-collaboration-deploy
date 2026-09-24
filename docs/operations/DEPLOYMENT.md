@@ -86,11 +86,14 @@ sudo certbot certonly --standalone \
 
 ## 启动与验证
 
+以下基础 Compose 命令用于尚未启用 v2 的全新自部署。已启用签名策略的现网必须使用[下方升级命令](#升级备份与回退)同时传入 `docker-compose.v2.yml`，否则会丢失 v2 挂载和配置。
+
 ```bash
 docker compose config --quiet
 docker compose up --build -d
 docker compose ps
 docker exec agent-nginx nginx -t
+docker exec agent-nginx nginx -s reload
 curl --fail https://agent-communication.online/healthz
 curl --fail https://agent-communication.online/docs/
 curl --fail https://agent-communication.online/docs/source/deploy/users/README.md
@@ -112,22 +115,25 @@ docker compose logs --tail=100
 
 ## 升级、备份与回退
 
-从签名的 `private` 策略切换到网关可解密的 `compliance` 策略，另按 [v2 迁移步骤](V2_MIGRATION.md)进行用户告知、显式授权、旧队列处理和可选 Compose 覆盖配置；普通服务升级不自动改变用户信息披露范围。
+现网已启用签名 `private` 策略，`allow_v1=true`。其策略在 **2026-10-24 13:43:31 UTC** 到期；运营方须提前使用离线根私钥续签更高 epoch，并先处理旧策略下未读或待发的 v2 消息。当前生产升级须保留 [v2 Compose 覆盖配置](V2_MIGRATION.md#compose-v2-覆盖文件)和原有身份、数据库及在线密钥。将来若切换到网关可解密的 `compliance`，另按该指南进行用户告知、显式授权和旧队列处理；普通服务升级不自动改变用户信息披露范围。
 
 Platform 管理后台的日常操作、权限和结果边界见[管理后台指南](PLATFORM_ADMIN.md)。管理台修改的存储、转发策略、历史保留天数，以及确认后保存的 Registry、MQ、Relay 运行参数均保存在 `platform_data` 卷中的 `/data/admin-policies.yaml`；升级与备份时须包含此文件。
 
 升级前保留一致的 Web SQLite 备份、Platform 数据与身份、`.env`、配置和当前镜像，并记录回滚标识。主配置 `deploy/platform/config.yaml` 仍以只读方式挂载，首次升级没有覆盖文件时沿用主配置值。Web 启动入口幂等应用 [`prisma/remote-console.sql`](../../agent-collaboration-web/prisma/remote-console.sql)，为远程控制与账户工作台增加所需结构；迁移保留历史业务表，不以清库方式升级。
 
-在干净的服务器源码检出中，待部署仓库固定新版本后运行：
+在干净的服务器源码检出中，待部署仓库固定新版本后运行。下面示例针对**已启用签名 v2 的现网**；无 v2 配置的首次自部署仍使用前述基础 Compose 命令，不能在现网升级时遗漏覆盖文件：
 
 ```bash
 git pull --ff-only
 git submodule sync --recursive
 git submodule update --init --recursive
-docker compose config --quiet
-docker compose up --build -d
+docker compose -f docker-compose.yml -f docker-compose.v2.yml config --quiet
+docker compose -f docker-compose.yml -f docker-compose.v2.yml up --build -d
 docker exec agent-nginx nginx -t
+docker exec agent-nginx nginx -s reload
 ```
+
+nginx 使用静态解析的 Compose 上游地址。Platform 或 Web 容器重建后，旧上游 IP 可能仍留在运行中的 nginx 配置；先执行 `nginx -t` 并 reload，再从公网检查 HTTPS 健康和业务 API。2026-09-24 首次 v2 切换就因遗漏 reload 导致健康检查失败而自动回退；补上 reload 后重新切换成功。仅重载 nginx 不会重新装入新增的 Compose 挂载，挂载变化仍须按下文重建 nginx 容器。
 
 四仓文档以只读挂载由 nginx 用户读取。若发布 shell 使用 `umask 077`，新检出的 Markdown 可能是 `0600`，导致 `/docs/` 阅读器获取源码时返回 403。更新源码后检查并修复公开文档的读取权限，再对实际路由做 HTTP 验证：
 

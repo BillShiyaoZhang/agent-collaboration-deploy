@@ -1,6 +1,6 @@
 # 可验证的隐私与合规解密协议（v2 源码与设计边界）
 
-**状态（2026-09-24）：v2 初版源码和服务端代码已部署，但现网尚未签发或启用 v2 策略，公开安装包仍为 r2。** 本文说明同一 Platform 的 Agent A ↔ Agent B 经 MQ 通信的密码学边界，也记录尚未落地的加强目标；不能据此宣称某地区的法律合规已经成立。现行 v1 接入点见[现行架构](OVERVIEW.md)、[Platform 架构](../../agent-comm-platform/docs/architecture/OVERVIEW.md)和[SDK 协议](../../agent-comm-platform/agent-comm/docs/architecture/PROTOCOL.md)。Web 工作台是另一个托管通信端点，已经会解密它获准收到的内容；本文的“平台不可解密”只指指定的 Agent A ↔ Agent B 消息相对于 MQ/Relay/合规网关的密码学边界。
+**状态（2026-09-24）：v2 初版源码和服务端代码已部署，现网已启用签名 `private` 策略（epoch 1、`allow_v1=true`）；公开安装包截至此时仍为 r2。** 旧 v1 Agent 消息仍可用，但没有 v2 私密信封的保证；支持 v2 的双方必须先固定策略根、预期 Platform PeerID 和彼此身份公钥，再使用 v2 发送路径。当前没有启用 `compliance`。本文说明同一 Platform 的 Agent A ↔ Agent B 经 MQ 通信的密码学边界，也记录尚未落地的加强目标；不能据此宣称某地区的法律合规已经成立。现行 v1 接入点见[现行架构](OVERVIEW.md)、[Platform 架构](../../agent-comm-platform/docs/architecture/OVERVIEW.md)和[SDK 协议](../../agent-comm-platform/agent-comm/docs/architecture/PROTOCOL.md)。Web 工作台是另一个托管通信端点，已经会解密它获准收到的内容；本文的“平台不可解密”只指指定的 Agent A ↔ Agent B 消息相对于 MQ/Relay/合规网关的密码学边界。
 
 ## 已落地的初版与尚需加强之处
 
@@ -11,7 +11,7 @@
 | 密码格式 | 独立 `/api/v2/`；固定字段顺序的规范 JSON、签名临时 X25519 握手、AES-256-GCM 正文；合规双 HPKE 槽和回执持钥 MAC | HSM/密钥隔离证明、更多套件与正式第三方安全审计 |
 | 门禁 | 平台先解密合规正文再原子保存原始信封和回执；`allow_v1=false` 隔离普通 v1，合规部署禁用透明 Circuit Relay；旧策略队列默认隔离 | 经独立时间见证的旧策略选择性交付、跨平台路由策略 |
 
-Go、TypeScript 的规范字节测试向量，以及[真实本地 Platform + 双 helper 验收](../../tests/integration/test_v2_gateway_network.py)覆盖初版的隐私握手、合规回执、策略切换与 v1 绕过拒绝。Web 托管控制台沿用下述受证书约束的 v1 例外；其 v2 编解码已有跨语言校验，但 Web 的控制 RPC 尚未改为 v2。服务端代码已部署不等于现网已启用签名策略，也不等于公开安装包或客户端已升级。
+Go、TypeScript 的规范字节测试向量，以及[真实本地 Platform + 双 helper 验收](../../tests/integration/test_v2_gateway_network.py)覆盖初版的隐私握手、合规回执、策略切换与 v1 绕过拒绝。Web 托管控制台沿用下述受证书约束的 v1 例外；其 v2 编解码已有跨语言校验，但 Web 的控制 RPC 尚未改为 v2。现网已签策略不等于公开安装包或任何现有客户端已升级；某条消息是否用 v2，仍须查看实际信封和收件端验证结果。签名策略有有效期，续签的更高 epoch 会隔离旧策略下未读或待发的 v2 消息；现网到期与续签步骤见[迁移指南](../operations/V2_MIGRATION.md)。
 
 ### 旧用户的知情与选择
 

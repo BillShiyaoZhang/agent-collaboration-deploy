@@ -4,6 +4,7 @@
 
 | 日期 | 发布 | 记录内容 |
 | --- | --- | --- |
+| 2026-09-24 | [生产 v2 私密兼容策略启用](V2_PRIVATE_COMPAT_POLICY_2026-09-24.md) | 签名 private/allow_v1、首轮 nginx 上游故障回退、线上 r2 与 v2 双 Agent 验收及续签期限 |
 | 2026-09-24 | [v2 协议代码上线（兼容阶段）](V2_CODE_DEPLOYMENT_2026-09-24.md) | 四仓 main、云端固定镜像、备份与权限修复；v2 策略尚未启用 |
 | 2026-09-24 | [Platform 系统配置编辑](PLATFORM_CONFIG_EDITOR_2026-09-24.md) | 六项运行参数预览确认、隔离重启验证、生产备份与只读验收 |
 | 2026-09-24 | [Platform 管理操作扩展](PLATFORM_ADMIN_OPERATIONS_2026-09-24.md) | MQ 汇总与分页、单封处置、明确目标策略、生产备份和只读验收 |
@@ -26,6 +27,6 @@
 | 2026-09-13 | [Registry ownership](REGISTRY_DEPLOYMENT_2026-09-13.md) | HTTP/libp2p 身份所有权修复、数据保留与恢复位置 |
 | 2026-09-13 | [HTTPS 登录修复](HTTPS_LOGIN_FIX_2026-09-13.md) | 安全及分块 cookie、认证回归和生产验证 |
 
-最新源码组合由根仓库递归子模块引用确定；线上运行提交和镜像须以最近一条**完成核对**的发布记录及服务器实际状态为准。[v2 协议代码上线记录](V2_CODE_DEPLOYMENT_2026-09-24.md)列出当前运行代码指针和镜像；先前的[Platform 系统配置编辑记录](PLATFORM_CONFIG_EDITOR_2026-09-24.md)保留上次切换状态。发布记录本身的纯文档提交不代表服务器再次切换应用代码。本次未重发官网安装包；下载版本和校验值以[官网发布清单](https://agent-communication.online/downloads/release-manifest.json)为准。
+最新源码组合由根仓库递归子模块引用确定；线上运行提交和镜像须以最近一条**完成核对**的发布记录及服务器实际状态为准。[生产 v2 私密兼容策略记录](V2_PRIVATE_COMPAT_POLICY_2026-09-24.md)列出策略、切换时的镜像及验收；先前的[协议代码上线记录](V2_CODE_DEPLOYMENT_2026-09-24.md)保留未启用策略时的状态。发布记录本身的纯文档提交不代表服务器再次切换应用代码。公开客户端版本和校验值以[官网发布清单](https://agent-communication.online/downloads/release-manifest.json)为准。
 
 新增发布记录应写清发布时的版本、检查范围、持久数据变化、运行结果和回滚位置；不将密钥、真实数据库或原始私人日志放入仓库。通用步骤在 [运维指南](../operations/DEPLOYMENT.md) 中维护。

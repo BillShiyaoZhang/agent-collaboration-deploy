@@ -70,6 +70,8 @@ def main(argv=None):
                      help="Directory containing the four prebuilt helper executables")
     cli.add_argument("--output-dir", type=Path, default=ROOT / "downloads")
     cli.add_argument("--invitation", type=Path, help="Optional reviewed PDF to copy into this release")
+    cli.add_argument("--policy-trust", type=Path, required=True,
+                     help="Release-authored JSON with independently verified public policy root and Platform Peer ID")
     args = cli.parse_args(argv)
     release = release_name(args.release)
     repos = (ROOT, ROOT / "agent-collaboration-web", ROOT / "agent-comm-platform", SDK)
@@ -78,6 +80,16 @@ def main(argv=None):
     verified = verify_wheels(wheels)
     assets = Path(__file__).resolve().parent / "early_access"
     common = {name: (assets / name).read_bytes() for name in ("README.md", "install.py", "configure_hermes.py", "onboard_hermes.py")}
+    from early_access.install import parse_policy_trust_bytes
+    if args.policy_trust.is_symlink() or not args.policy_trust.is_file() or args.policy_trust.stat().st_size > 8192:
+        raise ValueError("--policy-trust must be a regular, bounded public JSON file")
+    trust_bytes = args.policy_trust.read_bytes()
+    if len(trust_bytes) > 8192:
+        raise ValueError("--policy-trust must be a regular, bounded public JSON file")
+    parse_policy_trust_bytes(trust_bytes, release=release)
+    # Preserve the exact reviewed public artifact so CI can compare every ZIP
+    # directly with the committed release input, not a reserialized equivalent.
+    common["policy-trust.json"] = trust_bytes
     common.update({"wheels/" + wheel.name: wheel.read_bytes() for wheel in wheels})
     helpers = {platform: (args.helper_dir / binary).read_bytes() for platform, (binary, _) in VARIANTS.items()}
     invitation = None

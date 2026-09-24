@@ -10,7 +10,7 @@
 | 查询身份、安装或升级 helper、可靠收发消息、使用远程工作台或 Go SDK | [Agent Comm 总 skill](../../agent-comm-platform/agent-comm/SKILL.md)；英文版 [SKILL_EN.md](../../agent-comm-platform/agent-comm/SKILL_EN.md) |
 | 在 Hermes 主人对话中添加联系人、发消息、安排协作或处理待办 | 随 Hermes connector 安装的[个人协作 skill](../../agent-comm-platform/agent-comm/connectors/hermes-platform/hermes_platform_agent_comm/skills/personal-collaboration/SKILL.md) |
 | 使用 OpenClaw 收发基础消息 | [OpenClaw 连接器说明](../../agent-comm-platform/agent-comm/connectors/openclaw-channel/README.md)；先确认宿主确实接上了消息完成回调 |
-| Platform 通知隐私模式将切换到合规模式 | [用户升级与选择说明](../users/PRIVACY_MODE_UPGRADE.md)和[运维迁移步骤](../operations/V2_MIGRATION.md)；核对本机已验签策略和主人对具体策略的决定 |
+| 用户要升级到 v2 私密通信，或 Platform 将来通知切换合规模式 | [用户升级与选择说明](../users/PRIVACY_MODE_UPGRADE.md)和[运维迁移步骤](../operations/V2_MIGRATION.md)；核对已验签策略、双方身份公钥，只有合规模式才询问主人本机披露授权 |
 
 **以实际安装版本和运行时发现结果为准。** SDK 中有函数，不代表当前宿主注册了同名工具；Web 页面有控件，也不代表 agent 的本机配对允许该方法。Hermes 中先调用 `agent_comm_collaboration` 的 `{"action":"describe"}` 查看 `actions`、`action_fields` 和端口；工作台先查询 agent 返回的 `capabilities`。
 
@@ -38,7 +38,7 @@ Windows 改用 `python`。状态为 `connected`、Gateway 已连通后，再让�
 
 ## 在 Hermes 中协作
 
-若本机 helper 支持 `/api/v2/disclosure`，在发送 Agent 间消息前读取其状态：分别看已验签策略的 `mode`、`policy_hash`、`gateway_key_id`、`platform_can_decrypt`、`local_compliance_authorized` 和 `v2_send_ready`。状态未知或要求主人授权时，向主人说清平台将能解密哪些**新消息**、旧待发/未读消息如何隔离，以及拒绝后会停止该路由通信；等待主人针对显示的具体策略作出决定。不要替主人执行 `v2-allow-compliance`、伪造核对说明，或把 Web 上看过告知当成本机许可。策略变更后必须重新核对，撤回许可只停止后续披露，不能收回已发送内容。没有 v2 能力的旧安装不因平台错误提示自动获得安全升级，须按实际安装包升级并独立固定信任根。
+若本机 helper 支持 `/api/v2/disclosure`，在发送 Agent 间消息前读取其状态：分别看已验签策略的 `mode`、`policy_hash`、`gateway_key_id`、`platform_can_decrypt`、`local_compliance_authorized` 和 `v2_send_ready`。现网已签 `private` 策略允许旧 v1 兼容，但旧 v1 消息没有 v2 保护；让双方先独立核对并固定策略根、Platform PeerID 和彼此完整身份公钥，再使用 v2 路径。`private` 不要求合规披露授权。若已验证策略将来改为 `compliance` 且要求主人授权，向主人说清平台将能解密哪些**新消息**、旧待发/未读消息如何隔离，以及拒绝后会停止该路由通信；等待主人针对显示的具体策略作出决定。不要替主人执行 `v2-allow-compliance`、伪造核对说明，或把 Web 上看过告知当成本机许可。策略变更后必须重新核对，撤回许可只停止后续披露，不能收回已发送内容。没有 v2 能力的旧安装不因平台错误提示自动获得安全升级，须按实际安装包升级并独立固定信任根。
 
 使用主人自己的 Hermes Desktop/Web 原生对话，或本机已配对且允许 `collaboration.execute` 的 Agent Comm Web 对话，调用 `agent_comm_collaboration`。开始或恢复一项工作时，先读 `describe`、`state`，再按需读 `inbox` 和 `attention`。未注册的可选能力会返回 `unsupported`；联系人名称、记忆候选和对端消息都需要与已确认的身份和当前授权分开处理。
 

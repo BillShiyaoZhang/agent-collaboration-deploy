@@ -1,8 +1,9 @@
 """Verify an extracted early-access bundle, then install into THIS Hermes Python.
 
-No profile, key, mailbox or database is modified. --check-only is stdlib-only
-and can be used without Hermes. Release builders verifying a bundle for a
-different OS/CPU must also pass --cross-platform-check.
+--check-only is stdlib-only and never modifies a profile, key or database.
+--identity-dir additionally pins the release's verified policy root to an
+existing helper identity before that helper is started. Release builders
+verifying a bundle for another OS/CPU must pass --cross-platform-check.
 """
 import argparse
 from email.parser import Parser
@@ -19,9 +20,12 @@ import shutil
 import subprocess
 import sys
 import zipfile
+from urllib.parse import urlsplit
 
 EXPECTED_PACKAGES = ("agent-comm-runtime", "hermes-platform-agent-comm")
 SUPPORTED_PLATFORMS = {"windows-amd64", "linux-amd64", "macos-amd64", "macos-arm64"}
+POLICY_TRUST_FIELDS = {"schema_version", "release", "platform_origin", "platform_peer_id",
+                       "policy_root_public_key_hex", "verification_note"}
 
 
 def host_platform():
@@ -75,6 +79,79 @@ def wheel_metadata(path):
     return name, metadata
 
 
+def validate_policy_trust(value, *, release):
+    """Accept only public, release-specific trust anchors supplied by the publisher."""
+    if (not isinstance(value, dict) or set(value) != POLICY_TRUST_FIELDS
+            or type(value.get("schema_version")) is not int or value["schema_version"] != 1):
+        raise ValueError("policy-trust.json has an unsupported schema or extra fields")
+    if not isinstance(release, str) or not release or value["release"] != release:
+        raise ValueError("policy-trust.json does not match this release")
+    root = value["policy_root_public_key_hex"]
+    if not isinstance(root, str) or not re.fullmatch(r"[0-9a-f]{64}", root):
+        raise ValueError("policy-trust.json needs a canonical Ed25519 root public key")
+    peer = value["platform_peer_id"]
+    if not isinstance(peer, str) or not re.fullmatch(r"[1-9A-HJ-NP-Za-km-z]{32,80}", peer):
+        raise ValueError("policy-trust.json needs a canonical Platform Peer ID")
+    origin = value["platform_origin"]
+    if not isinstance(origin, str):
+        raise ValueError("policy-trust.json needs an HTTPS Platform origin")
+    parsed = urlsplit(origin)
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise ValueError("policy-trust.json needs a valid HTTPS Platform port") from exc
+    if (not origin.isascii() or parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password
+            or port == 0
+            or parsed.path or parsed.query or parsed.fragment or origin != f"https://{parsed.netloc}"):
+        raise ValueError("policy-trust.json needs a plain HTTPS Platform origin")
+    note = value["verification_note"]
+    if (not isinstance(note, str) or not note.strip() or note != note.strip() or len(note) > 512
+            or any(ord(char) < 32 or ord(char) == 127 for char in note)):
+        raise ValueError("policy-trust.json needs a concise independent verification note")
+    return value
+
+
+def parse_policy_trust_bytes(data, *, release):
+    def unique_fields(pairs):
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise ValueError(f"Duplicate policy-trust.json field: {key}")
+            value[key] = item
+        return value
+
+    return validate_policy_trust(json.loads(data.decode("utf-8"), object_pairs_hook=unique_fields), release=release)
+
+
+def load_policy_trust(root, *, release):
+    path = _asset(root, "policy-trust.json")
+    if path.stat().st_size > 8192:
+        raise ValueError("policy-trust.json is too large")
+    return parse_policy_trust_bytes(path.read_bytes(), release=release)
+
+
+def pin_policy_trust(root, identity_dir, *, release):
+    """Pin to an existing identity; never create a replacement identity here."""
+    root, _ = verify_bundle(root)
+    trust = load_policy_trust(root, release=release)
+    identity = Path(identity_dir).expanduser().resolve()
+    if not identity.is_dir() or not (identity / "identity_sk.pem").is_file():
+        raise ValueError("--identity-dir must name an existing helper identity; do not initialize another")
+    helper = root / ("agent-comm-helper.exe" if os.name == "nt" else "agent-comm-helper")
+    if os.name != "nt":
+        helper.chmod(helper.stat().st_mode | 0o100)
+    note = f"Agent Comm release {release}: {trust['verification_note']}"
+    result = subprocess.run([str(helper), "v2-ensure-policy-root", str(identity),
+                             trust["policy_root_public_key_hex"], trust["platform_peer_id"], note],
+                            check=True, capture_output=True, text=True, timeout=45)
+    output = json.loads(result.stdout)
+    if (not isinstance(output, dict) or output.get("pinned") is not True
+            or output.get("policy_root_public_key") != trust["policy_root_public_key_hex"]
+            or output.get("platform_id") != trust["platform_peer_id"]):
+        raise RuntimeError("The helper did not confirm the exact release policy root and Platform identity")
+    return trust
+
+
 def verify_bundle(directory, *, cross_platform=False):
     root = Path(directory).expanduser().resolve()
     manifest_path = root / "SHA256SUMS.json"
@@ -102,7 +179,7 @@ def verify_bundle(directory, *, cross_platform=False):
         path = _asset(root, relative)
         if _sha256(path) != expected.lower():
             raise ValueError(f"SHA256 mismatch: {relative}")
-    required = {"install.py", "configure_hermes.py", "README.md"}
+    required = {"install.py", "configure_hermes.py", "README.md", "policy-trust.json"}
     required.update(path.relative_to(root).as_posix() for path in root.glob("*.py"))
     helper_assets = [path for path in root.iterdir() if path.is_file() and "helper" in path.name.lower()
                      and path.suffix.lower() in {"", ".exe"}]
@@ -126,6 +203,7 @@ def verify_bundle(directory, *, cross_platform=False):
         selected[name] = wheel
     if set(selected) != set(EXPECTED_PACKAGES):
         raise ValueError("The expected wheel pair is incomplete")
+    load_policy_trust(root, release=manifest.get("release"))
     return root, selected
 
 
@@ -208,14 +286,27 @@ def main(argv=None):
     cli.add_argument("--check-only", action="store_true", help="Verify checksums and wheel metadata; do not require Hermes or install anything")
     cli.add_argument("--cross-platform-check", action="store_true",
                      help="With --check-only, verify a release for another OS/CPU without installing it")
+    cli.add_argument("--identity-dir", type=Path,
+                     help="After installation, pin verified release trust to this existing helper identity")
+    cli.add_argument("--pin-only", action="store_true",
+                     help="Pin verified release trust to --identity-dir without reinstalling Python wheels")
     args = cli.parse_args(argv)
     try:
         if args.cross_platform_check and not args.check_only:
             raise ValueError("--cross-platform-check requires --check-only")
+        if args.identity_dir and args.check_only:
+            raise ValueError("--identity-dir cannot be used with --check-only")
+        if args.pin_only and (args.check_only or not args.identity_dir):
+            raise ValueError("--pin-only requires --identity-dir and cannot be used with --check-only")
         root, wheels = verify_bundle(args.bundle_dir, cross_platform=args.cross_platform_check)
+        release = json.loads((root / "SHA256SUMS.json").read_text(encoding="utf-8"))["release"]
         package_versions = {name: wheel_metadata(wheel)[1]["Version"] for name, wheel in wheels.items()}
         print(json.dumps({"status": "bundle_verified", "bundle": str(root), "packages": package_versions}, ensure_ascii=False))
         if args.check_only:
+            return 0
+        if args.pin_only:
+            pin_policy_trust(root, args.identity_dir, release=release)
+            print("The existing helper identity now has this release's verified policy root and Platform ID. Restart its daemon before continuing.")
             return 0
         constants, _ = ensure_hermes()
         check_dependencies(wheels)
@@ -227,11 +318,14 @@ def main(argv=None):
                  "assert all(m.version(name) == version for name, version in expected.items()); "
                  "import agent_comm_runtime.remote, hermes_platform_agent_comm")
         subprocess.run([sys.executable, "-c", probe], check=True, cwd=root)
+        if args.identity_dir:
+            pin_policy_trust(root, args.identity_dir, release=release)
         print("Installed the verified wheels into this Hermes Python. This installs Python components only; it does not connect Hermes to Web.")
         print("For a new Web connection, run onboard_hermes.py from this bundle with this same Hermes Python. It starts the helper, returns the Web claim_url, and completes pairing and Gateway startup automatically after Web confirmation.")
         print("Current guide: https://agent-communication.online/agent-install.md . Existing manually managed identities must retain their helper data, URN and Hermes profile; follow the existing-client steps instead of replacing that identity.")
         return 0
-    except (ValueError, RuntimeError, OSError, zipfile.BadZipFile, subprocess.CalledProcessError, ImportError) as exc:
+    except (ValueError, RuntimeError, OSError, zipfile.BadZipFile, subprocess.CalledProcessError,
+            subprocess.TimeoutExpired, ImportError, json.JSONDecodeError) as exc:
         print(f"Installation stopped: {exc}", file=sys.stderr)
         return 2
 

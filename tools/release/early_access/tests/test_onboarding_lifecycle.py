@@ -23,6 +23,12 @@ class LifecycleTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.home = Path(self.temp.name)
 
+    @staticmethod
+    def trust():
+        return {"schema_version": 1, "release": "fixture", "platform_origin": "https://agents.example.org",
+                "platform_peer_id": "12D3KooW" + "A" * 45, "policy_root_public_key_hex": "a" * 64,
+                "verification_note": "Independent fixture key review"}
+
     def test_launcher_is_read_without_evaluating_shell(self):
         python = self.home / "venv/bin/python"
         python.parent.mkdir(parents=True)
@@ -62,6 +68,7 @@ class LifecycleTests(unittest.TestCase):
                   "identity_dir": str(self.home / "identity"), "helper_url": "http://127.0.0.1:54321", "port": 54321}
         with patch.object(onboarding, "ensure_hermes", return_value=(constants, config)), \
              patch.object(onboarding, "retain_bundle", return_value=self.home), \
+             patch.object(onboarding, "bundle_policy_trust", return_value=self.trust()), \
              patch.object(onboarding.subprocess, "run"), \
              patch.object(onboarding, "ensure_helper", return_value=helper), \
              patch.object(onboarding, "run_json", return_value={"signature": "a" * 128, "pubkey": "b" * 64}), \
@@ -154,10 +161,59 @@ class LifecycleTests(unittest.TestCase):
         (self.home / "agent-comm-helper").touch()
         previous = {"agent_urn": "urn:agent-comm:agent:test", "port": 45042}
         with patch.object(onboarding, "run_json", return_value={"urn": previous["agent_urn"]}), \
+             patch.object(onboarding, "bundle_policy_trust", return_value=self.trust()), \
+             patch.object(onboarding, "pin_policy_trust") as pin, \
              patch.object(onboarding, "start_helper_supervisor") as start:
             with self.assertRaisesRegex(ValueError, "already owns a helper port"):
                 onboarding.ensure_helper(self.home, self.home, "https://agents.example.org", previous, 45043)
+        pin.assert_not_called()
         start.assert_not_called()
+
+    def test_running_legacy_helper_is_not_silently_reused_after_pin(self):
+        import configure_hermes
+        (self.home / "agent-comm-helper").touch()
+        urn = "urn:agent-comm:agent:test"
+        events = []
+        with patch.object(onboarding, "run_json", return_value={"urn": urn}), \
+             patch.object(onboarding, "bundle_policy_trust", return_value=self.trust()), \
+             patch.object(onboarding, "pin_policy_trust", side_effect=lambda *args, **kwargs: events.append("pin")), \
+             patch.object(configure_hermes, "helper_info", return_value=("http://127.0.0.1:45042", urn)), \
+             patch.object(onboarding, "verified_helper_disclosure", return_value=False), \
+             patch.object(onboarding, "start_helper_supervisor") as start:
+            with self.assertRaisesRegex(RuntimeError, "stop that helper safely"):
+                onboarding.ensure_helper(self.home, self.home, "https://agents.example.org", None)
+        self.assertEqual(events, ["pin"])
+        start.assert_not_called()
+
+    def test_new_helper_is_pinned_before_it_is_started(self):
+        import configure_hermes
+        (self.home / "agent-comm-helper").touch()
+        urn = "urn:agent-comm:agent:test"
+        events = []
+        with patch.object(onboarding, "run_json", return_value={"urn": urn}), \
+             patch.object(onboarding, "bundle_policy_trust", return_value=self.trust()), \
+             patch.object(onboarding, "pin_policy_trust", side_effect=lambda *args, **kwargs: events.append("pin")), \
+             patch.object(configure_hermes, "helper_info", side_effect=[OSError("not running"),
+                                                                          ("http://127.0.0.1:45042", urn)]), \
+             patch.object(configure_hermes, "ensure_platform_registration"), \
+             patch.object(onboarding, "start_helper_supervisor", side_effect=lambda *args, **kwargs: events.append("start")), \
+             patch.object(onboarding, "verified_helper_disclosure", return_value=True):
+            result = onboarding.ensure_helper(self.home, self.home, "https://agents.example.org", None)
+        self.assertEqual(result["agent_urn"], urn)
+        self.assertEqual(events, ["pin", "start"])
+
+    def test_existing_helper_reuse_requires_exact_loaded_root_and_verified_platform(self):
+        trust = self.trust()
+        with patch.object(onboarding, "request_json", return_value={
+                "policy_root_public_key": trust["policy_root_public_key_hex"],
+                "policy_verified": True, "platform_id": trust["platform_peer_id"]}):
+            self.assertTrue(onboarding.verified_helper_disclosure("http://127.0.0.1:45042", trust))
+        for change in ({"policy_root_public_key": None}, {"policy_verified": False},
+                       {"platform_id": "another-peer"}):
+            with self.subTest(change=change), patch.object(onboarding, "request_json", return_value={
+                    "policy_root_public_key": trust["policy_root_public_key_hex"],
+                    "policy_verified": True, "platform_id": trust["platform_peer_id"], **change}):
+                self.assertFalse(onboarding.verified_helper_disclosure("http://127.0.0.1:45042", trust))
 
     def test_gateway_retry_cannot_restore_a_revoked_pairing(self):
         import configure_hermes

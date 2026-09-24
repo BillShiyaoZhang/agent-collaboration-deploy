@@ -1082,15 +1082,15 @@ flowchart LR
 
 | 轨道 | 本轮实际对象 | 通过条件的边界 |
 | --- | --- | --- |
-| 现有公开 r2 首装 | 官网 `release-manifest.json` 指向的 ZIP 和包内旧版 helper | 验证用户目前确实能下载、校验、安装并完成 Web 配对和旧协议兼容流程；不能记为 v2 新版安装已通过。 |
-| 未来 v2 候选包首装 | 单独构建、签名并记录摘要的候选 ZIP；在实际发布前不冒充官网包 | 除安装与 Web 配对外，还须在隔离 staging 部署有效签名策略，并从独立可信渠道核对、固定策略根、Platform Peer ID 和对端完整身份公钥。未具备这些前提时，新 helper 拒绝普通 Agent 间发送是预期结果，不能靠重建身份或退回 v1 使测试“通过”。 |
+| r2 旧版兼容首装 | 测试冻结时官网 `release-manifest.json` 指向的 r2 ZIP 和包内旧版 helper | 验证 r2 用户能下载、校验、安装并完成 Web 配对和旧协议兼容流程；不能记为 v2 新版安装已通过。 |
+| v2 发布候选包首装 | 单独构建、签名并记录摘要的候选 ZIP；在实际发布前不冒充官网包 | 除安装与 Web 配对外，还须在隔离 staging 部署有效签名策略，并从独立可信渠道核对、固定策略根、Platform Peer ID 和对端完整身份公钥。未具备这些前提时，新 helper 拒绝普通 Agent 间发送是预期结果，不能靠重建身份或退回 v1 使测试“通过”。 |
 
-2026-09-24 的 v2 代码已经部署，但生产尚未启用签名策略，公开接入 ZIP 也未重发；当前公网不能作为候选 v2 消息成功的验收环境。源码安装或本地模拟通过不得替代候选 ZIP 首装证据。
+**状态更新（2026-09-24）：** 生产已启用签名 `private`、`allow_v1=true`、epoch 1；本节原先记录的“策略未启用”仅适用于切换前。E3 公网保持只读烟测，候选包的写入式双 Agent 验收仍在隔离 E2-V 完成；只有官网清单实际发布 v0.8.0 并从公网下载完整 ZIP 再首装验收，才能声称用户可获得 v2 接入包。源码安装或本地模拟通过不得替代候选 ZIP 与公开 ZIP 各自的首装证据。
 
 **Codex 可代办（C/C+授权）**
 
 1. 准备独立 Hermes 安装/解释器/profile，记录安装前包清单与文件清单，确认旧 runtime/connector 不存在；检查 Python 3.11+、Hermes 宿主依赖、系统架构、端口和网络。临时 OS 用户也要有独立解释器，不能继承机器全局的 agent-comm 包。
-2. 先选择并标记上述轨道。公开 r2 取官网完整 ZIP 与其外部 `release-manifest.json`；未来 v2 候选包取独立候选清单与完整 ZIP。两者分别核对 ZIP 摘要、包内 `SHA256SUMS.json`、helper 和两个 wheel；源码脚本目录不能代替任一接入包。
+2. 先选择并标记上述轨道。r2 兼容回归使用已冻结的官网 ZIP 与外部 `release-manifest.json` 证据；v2 发布候选包取独立候选清单与完整 ZIP。公开清单切换后，再新增一条**当时真实公网下载的 v2 ZIP**首装记录。分别核对 ZIP 摘要、包内 `SHA256SUMS.json`、helper 和两个 wheel；源码脚本目录不能代替任一接入包。
 3. 使用测试 Hermes 的 Python 运行 `install.py --check-only`。该命令验证包内文件、wheel 元数据及 helper 对应的 OS/CPU；它不证明 Hermes 宿主依赖完整。跨平台发布构建器可显式加 `--cross-platform-check` 做只读完整性检查，首装测试不得使用该选项绕过宿主匹配校验。
 4. 使用指定的临时 Hermes home、解释器、staging HTTPS origin、helper 端口和 1 天期限执行 `onboard_hermes.py`；它内部执行安装，然后初始化 helper、签名注册并生成 claim。首装主路径不预先手动安装，以便覆盖真实自动安装过程。
 5. 打开测试账户的 claim 页面，核对已登录账户、Agent、方法与到期时间。新增 Agent 权限的浏览器操作需要在点击时确认；你确认本次页面列出的范围后，Codex 可代为点击。真人 UX 验收时则由你亲自检查和点击。Console URN 在完成后的配对状态中核对，当前 claim 页面不展示它。
@@ -1147,7 +1147,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Onboarding failed; preserve evidence' }
 ~~~mermaid
 flowchart TD
     A["Codex 准备纯 Hermes、独立 Python 和新 profile"] --> B["检查无旧包、系统架构和网络"]
-    B --> C["按公开 r2 或候选 v2 轨道核对清单与 SHA256"]
+    B --> C["按冻结 r2、v2 候选或已发布 v2 轨道核对清单与 SHA256"]
     C --> D{"校验通过？"}
     D -- "否" --> E["停止，不安装"]
     D -- "是" --> F["install.py --check-only"]
@@ -1168,7 +1168,7 @@ flowchart TD
 
 ~~~mermaid
 flowchart LR
-    BUNDLE["公开 r2 或候选 v2 ZIP / 对应清单"] --> VERIFY["install.py 校验"]
+    BUNDLE["冻结 r2、v2 候选或已发布 v2 ZIP / 对应清单"] --> VERIFY["install.py 校验"]
     VERIFY --> PY["Hermes Python runtime + connector"]
     BUNDLE --> HELPER["onboard 启动包内 Go helper"]
     HELPER --> REGISTER["Platform Registry 注册新 URN"]
@@ -1182,7 +1182,7 @@ flowchart LR
 **通过条件**
 
 - 安装前包清单与 profile 清单证明没有复用旧 runtime/connector、身份、pairing 或 mailbox；
-- ZIP 与其所属轨道的清单一致，包内文件符合 SHA256；篡改在安装前失败，OS/架构核验单独记录；公开 r2 与候选 v2 不合并为一个通过结果；
+- ZIP 与其所属轨道的清单一致，包内文件符合 SHA256；篡改在安装前失败，OS/架构核验单独记录；冻结 r2、v2 候选和实际已发布 v2 不合并为一个通过结果；
 - runtime 和 connector 安装到运行 Hermes 的同一个 Python；
 - helper 生成新 URN 并在 staging Platform 注册，helper 只绑定 loopback；
 - claim 页面显示真实 Agent、方法与短期限，正确账户确认后才建立配对；完成后核对 Console URN，错误账户/未确认场景没有获得权限；

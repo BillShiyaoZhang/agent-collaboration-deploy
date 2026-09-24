@@ -18,10 +18,16 @@ mkdir -p "$DEPLOY_DIR/build"
   go build -o "$DEPLOY_DIR/build/agent-comm-helper" ./cmd/helper
 )
 "$DEPLOY_DIR/build/agent-comm-helper" init /absolute/path/to/hermes-agent-keys
+```
+
+将身份路径替换为实际路径；升级时使用原身份目录和原 `mailbox.db`。当前 v2 helper 启动前，必须从平台之外核对策略根 Ed25519 **公钥**与预期 Platform Peer ID，再对该身份固定；不能从未认证的 bootstrap 响应直接采信。预编译 v2 接入包由[发布者核对并随包固定](../../tools/release/README.md#接入包与开发源码)，源码安装则显式执行：
+
+```bash
+"$DEPLOY_DIR/build/agent-comm-helper" v2-pin-policy-root /absolute/path/to/hermes-agent-keys ROOT_PUBLIC_KEY_64_LOWERCASE_HEX EXPECTED_PLATFORM_PEER_ID "independent verification source and date"
 "$DEPLOY_DIR/build/agent-comm-helper" daemon /absolute/path/to/hermes-agent-keys https://agent-communication.online 45042
 ```
 
-将身份路径替换为实际路径；升级时使用原身份目录和原 `mailbox.db`。daemon 前台运行，持久服务配置见 [SDK 服务说明](../../agent-comm-platform/agent-comm/README.md)。每个 helper 身份有独立数据目录和本机端口，服务的 `ExecStart` / `ProgramArguments` 使用本次 helper 的绝对路径。
+现网若尚未启用签名 `private` 策略，新 v2 helper 仍会失败关闭普通 Agent 间发送；先完成[策略迁移](V2_MIGRATION.md)，不以替换身份或回退到未固定 v1 绕过。daemon 前台运行，持久服务配置见 [SDK 服务说明](../../agent-comm-platform/agent-comm/README.md)。每个 helper 身份有独立数据目录和本机端口，服务的 `ExecStart` / `ProgramArguments` 使用本次 helper 的绝对路径。
 
 ## 2. 安装 runtime 与 Hermes 插件
 

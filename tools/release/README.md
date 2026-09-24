@@ -37,11 +37,28 @@ python -m pip wheel --no-deps --no-build-isolation agent-comm-platform/agent-com
 | darwin / amd64 | `agent-comm-helper-darwin-amd64` | `agent-comm-helper` |
 | darwin / arm64 | `agent-comm-helper-darwin-arm64` | `agent-comm-helper` |
 
-```sh
-python tools/release/build_early_access.py --release RELEASE_ID
+为 v2 接入包先由发布者从**平台之外**核对策略根公钥和预期 Platform Peer ID，创建仅含公开资料的本地 JSON（未经审阅不要提交；绝不能放策略根私钥）。例如将以下模板保存为受限的 `build/policy-trust-RELEASE_ID.json`，把占位值替换为实际核对结果：
+
+```json
+{
+  "schema_version": 1,
+  "release": "RELEASE_ID",
+  "platform_origin": "https://agent-communication.online",
+  "platform_peer_id": "EXPECTED_PLATFORM_PEER_ID",
+  "policy_root_public_key_hex": "64_LOWERCASE_HEX_CHARACTERS",
+  "verification_note": "Release owner independently verified the offline root and Platform identity"
+}
 ```
 
-输出到 `downloads/`，可用 `--output-dir` 指定独立发布目录。每份 ZIP 保持 `onboard_hermes.py`、`install.py`、`configure_hermes.py` 和 README 并列，包含对应 helper、两个 wheel 及 `SHA256SUMS.json`。自动入口处理干净 Hermes 的本机安装、helper 注册、Web 确认后的签名配对与 Gateway 启动；单独的安装和配置入口继续支持已有客户端。脚本逐字节核对 wheel 与当前源码，解压后执行安装脚本的 `--check-only`。源码 ZIP 包括 deploy、Web、platform 和 SDK 四个仓库及其提交清单。
+```sh
+python tools/release/build_early_access.py --release RELEASE_ID --policy-trust build/policy-trust-RELEASE_ID.json
+```
+
+经发布者审阅的**公开**版本可将这份仅含公钥的资料固定在仓库的 `tools/release/trust/RELEASE_ID.json`，供 GitHub Actions 从确切的部署仓库提交重现构建；`v0.8.0` 的输入是 [`trust/v0.8.0.json`](trust/v0.8.0.json)。此处只存公钥和核对来源说明，不存根私钥、网关私钥或用户许可。CI 必须核对该文件的 `release` 与 SDK tag 相同，并验证四个包内文件和校验清单均匹配该固定输入；后续版本各自新增文件，不覆盖旧版本信任资料。
+
+输出到 `downloads/`，可用 `--output-dir` 指定独立发布目录。每份 ZIP 保持 `onboard_hermes.py`、`install.py`、`configure_hermes.py`、发布生成的 `policy-trust.json` 和 README 并列，包含对应 helper、两个 wheel 及 `SHA256SUMS.json`；策略根公钥、Peer ID、HTTPS origin 和核对记录均由这份文件提供，校验清单覆盖其确切字节。构建器缺少或发现畸形的信任资料时拒绝出包。自动入口先将它幂等固定到原 helper 身份，再启动并确认 helper 真正加载相同根和已验签的平台 ID，随后才处理注册、Web 确认后的签名配对与 Gateway 启动；已运行旧 helper 不能未经安全停止/重启而被静默复用。单独的安装和配置入口继续支持已有客户端。脚本逐字节核对 wheel 与当前源码，解压后执行安装脚本的 `--check-only`。源码 ZIP 包括 deploy、Web、platform 和 SDK 四个仓库及其提交清单。
+
+包内 SHA 清单只证明**已取得的包内部**没有相互不一致；发布时仍须从可信发布渠道核对顶层 ZIP 的哈希。只有线上已部署并验证签名 `private` 策略且两端真实接入通过后，才将 v2 ZIP 同步到公开下载目录；构建候选包本身不改变现有 r2 下载或生产策略。
 
 `--release` 默认为当天 UTC 日期，可传版本号或明确的发布标识。包内 Python 版本来自项目 metadata，安装脚本按发布清单核对，不需要手动同步版本常量。归档文件时间戳来自 deploy 提交时间。
 

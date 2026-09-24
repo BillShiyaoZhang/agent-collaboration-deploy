@@ -1,12 +1,12 @@
 # T13～T21 新增测试执行卡
 
-**状态：待执行，本文不记录通过结果。** 编号、优先级和发布门禁以[2026-09-24 增量复测方案](RETEST_PLAN_2026-09-24.md)为准；原 T00～T12 的操作及人工步骤见[测试执行指南](TEST_EXECUTION_GUIDE.md)。E2-L 是隔离的旧协议兼容 staging，E2-V 是另一套隔离的 v2 staging；当前生产没有启用签名 v2 策略，公开安装包仍为 r2。以下所有写入、故障注入和合成身份只在 E0/E1/E2-V（或标明的 E2-L）使用，E3 仅只读。
+**状态：本文是执行卡，不记录通过结果；实际结果以对应发布和验收报告为准。** 编号、优先级和发布门禁以[2026-09-24 增量复测方案](RETEST_PLAN_2026-09-24.md)为准；原 T00～T12 的操作及人工步骤见[测试执行指南](TEST_EXECUTION_GUIDE.md)。E2-L 是隔离的旧协议兼容 staging，E2-V 是另一套隔离的 v2 staging；生产已于 2026-09-24 启用签名 `private`、`allow_v1=true`、epoch 1。原公开 r2 包与待发布 v0.8.0 候选包应分开验收；实际公开版本以当次下载清单为准。以下所有写入、故障注入和合成身份只在 E0/E1/E2-V（或标明的 E2-L）使用，E3 仅只读。
 
 每项分别生成 RUN_ID，先保存四仓提交、实际镜像、活动策略状态和接入包清单；保存脱敏的请求 ID、时间线、服务/Agent 日志、前后数据库或 API 快照、`result.json` 与 `cleanup.json`。每个断言标明 **PASS、FAIL、未执行或受阻**，并附证据路径。模拟的 Alice/Bob 授权只证明机制；需要真人选择的分支单独记录同一测试者分别扮演两人，或两名测试者各自的决定。任何结果都不能仅由 HTTP 200、MQ 入队、网关回执或旧 Web 快照推断业务完成。
 
 ## T13：公开文档与下载说明（P1；合规告知前 P0）
 
-**目标与环境：** E0 检查四仓 Markdown 结构；在隔离 E2 复现严格检出权限并检查 HTTPS 文档入口、地址跳转、下载清单及访问边界；E3 仅只读核对公网结果。验证文案明确区分“v2 代码已部署、策略未启用、公开包仍为 r2”。
+**目标与环境：** E0 检查四仓 Markdown 结构；在隔离 E2 复现严格检出权限并检查 HTTPS 文档入口、地址跳转、下载清单及访问边界；E3 仅只读核对公网结果。验证文案准确区分“签名 `private` 策略已启用、旧 v1 仍兼容、公开接入包是否已切到 v0.8.0”，并以检查时的策略和下载清单为准。
 
 **Codex：** 运行 `python tools/maintenance/check_structure.py`；逐页请求 `/docs/` 的四仓角色入口、`/docs/?path=platform/guides/API.md`、现行 `/docs/api/` 和旧 `/guide/`，跟随跳转检查相对链接及中英页面；在隔离 E2 用严格只读检出权限复查 Markdown 路由，尝试路径越界和非公开文件地址，记录状态、最终 URL 与响应内容；做桌面/窄屏截图。**你：** 仅在发布合规告知前阅读一次隐私/升级文字，指出是否能理解网关可读范围、是否已启用和如何拒绝；脚本的文字匹配不算真人理解。
 
@@ -250,7 +250,7 @@ flowchart LR
 
 ## T20：公开包、候选 v2 包与严格权限镜像（P0；公开 v2 前必过）
 
-**目标与环境：** E0 打包校验，E2-L 当前公开 r2 首装，E2-V 候选 v2 首装/原身份升级，以及原生 Windows amd64、Linux amd64、macOS amd64/arm64 环境。检出权限复现用隔离 Linux 构建环境，不在生产改文件权限。
+**目标与环境：** E0 打包校验，E2-L 测试冻结的 r2 旧版首装，E2-V 候选 v2 首装/原身份升级，以及原生 Windows amd64、Linux amd64、macOS amd64/arm64 环境。检出权限复现用隔离 Linux 构建环境，不在生产改文件权限。v2 正式发布后另用当时官网清单和 ZIP 做公开首装，不以候选包结果代替。
 
 **Codex：** 先核对官网 `release-manifest.json` 和四种公开 ZIP，按[接入包指南](../../tools/release/early_access/README.md)在独立 Hermes Python/profile 运行 `install.py --check-only` 与 `onboard_hermes.py`，确认 r2 接当前兼容服务。另由根仓库发布工具从**干净且已提交的四仓固定检出**构建四种**单独标记的候选 v2 完整 ZIP**，记录外部 manifest 与内部 `SHA256SUMS.json`、两个 wheel、helper/脚本摘要；各原生 OS 测错误架构拒绝、首装与保留原 `keys_dir`/`mailbox.db` 的就地升级。候选 Agent 间发送只连已签 E2-V 策略，并按 T16/T17 核对信任锚和授权。用严格 `umask 077` 的检出重建 Web 镜像，以 UID 1001 在旧库上实际运行迁移并读取 Prisma SQL、CLI 与 Next 文件；复核旧账户/控制台、`UserPolicyConsent`、`UserControlPause`。**你：** 需要真人首装 UX 时查看 claim 的账户、权限和期限并作本次授权决定；Codex 可完成预先约定的合成账户安装。macOS 原生机器等缺失时只标未覆盖，不借交叉编译代替。
 

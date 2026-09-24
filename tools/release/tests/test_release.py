@@ -148,6 +148,12 @@ class TestReleases(unittest.TestCase):
         self.repository(sdk, {".gitignore": "dist/\n"})
         helpers = root / "build/helpers"
         helpers.mkdir(parents=True)
+        trust_path = root / "build/policy-trust.json"
+        trust_path.write_text(json.dumps({"schema_version": 1, "release": "fixture",
+                                          "platform_origin": "https://agents.example.org",
+                                          "platform_peer_id": "12D3KooW" + "A" * 45,
+                                          "policy_root_public_key_hex": "a" * 64,
+                                          "verification_note": "Independent fixture key review"}), encoding="utf-8")
         for binary, _ in build_early_access.VARIANTS.values():
             (helpers / binary).write_bytes(f"fixture {binary}; never executed".encode())
         packages = build_early_access.release_packages
@@ -156,7 +162,8 @@ class TestReleases(unittest.TestCase):
              patch.object(build_early_access, "release_packages", side_effect=lambda: packages(sources)), \
              patch.object(build_early_access, "verify_wheels", side_effect=lambda wheels: verify(wheels, sources)), \
              contextlib.redirect_stdout(io.StringIO()):
-            build_early_access.main(["--release", "fixture", "--helper-dir", str(helpers)])
+            build_early_access.main(["--release", "fixture", "--helper-dir", str(helpers),
+                                     "--policy-trust", str(trust_path)])
         report = json.loads((root / "downloads/release-manifest.json").read_text())
         self.assertEqual(report["packages"], versions)
         self.assertEqual(len(report["files"]), len(build_early_access.VARIANTS) + 1)
@@ -168,9 +175,26 @@ class TestReleases(unittest.TestCase):
                 self.assertEqual(manifest["packages"], versions)
                 self.assertEqual(manifest["platform"], platform_name)
                 self.assertIn("onboard_hermes.py", manifest["files"])
+                self.assertIn("policy-trust.json", manifest["files"])
+                self.assertEqual(archive.read("policy-trust.json"), trust_path.read_bytes())
+                self.assertEqual(json.loads(archive.read("policy-trust.json"))["policy_root_public_key_hex"], "a" * 64)
                 self.assertIn(b"def verify_grant", archive.read("onboard_hermes.py"))
                 self.assertEqual(archive.read(packaged_name), (helpers / binary).read_bytes())
                 self.assertEqual((archive.getinfo(packaged_name).external_attr >> 16) & 0o777, 0o755)
+        trust_path.write_text(json.dumps({"schema_version": 1, "release": "fixture",
+                                          "platform_origin": "https://agents.example.org",
+                                          "platform_peer_id": "12D3KooW" + "A" * 45,
+                                          "policy_root_public_key_hex": "a" * 64,
+                                          "policy_root_private_key_hex": "b" * 64,
+                                          "verification_note": "Independent fixture key review"}), encoding="utf-8")
+        rejected = root / "build/rejected-release"
+        with patch.object(build_early_access, "ROOT", root), patch.object(build_early_access, "SDK", sdk), \
+             patch.object(build_early_access, "release_packages", side_effect=lambda: packages(sources)), \
+             patch.object(build_early_access, "verify_wheels", side_effect=lambda wheels: verify(wheels, sources)):
+            with self.assertRaisesRegex(ValueError, "extra fields"):
+                build_early_access.main(["--release", "fixture", "--helper-dir", str(helpers),
+                                         "--policy-trust", str(trust_path), "--output-dir", str(rejected)])
+        self.assertFalse(rejected.exists())
 
 
 if __name__ == "__main__":

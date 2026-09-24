@@ -25,7 +25,7 @@ from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 import uuid
 
-from install import ensure_hermes, utf8_output, verify_bundle
+from install import ensure_hermes, load_policy_trust, pin_policy_trust, utf8_output, verify_bundle
 
 PROTOCOL = "agent-comm-onboarding/v1"
 DEFAULT_PLATFORM = "https://agent-communication.online"
@@ -209,6 +209,19 @@ def retain_bundle(bundle, home):
     return destination
 
 
+def bundle_policy_trust(bundle):
+    manifest = json.loads((bundle / "SHA256SUMS.json").read_text(encoding="utf-8"))
+    return load_policy_trust(bundle, release=manifest["release"])
+
+
+def verified_helper_disclosure(url, trust):
+    """Prove that an already listening daemon loaded this release's anchors."""
+    disclosure = request_json(url + "/api/v2/disclosure")
+    return (disclosure.get("policy_root_public_key") == trust["policy_root_public_key_hex"]
+            and disclosure.get("policy_verified") is True
+            and disclosure.get("platform_id") == trust["platform_peer_id"])
+
+
 def serve_helper(path):
     """One supervisor per identity, independent of the installing Hermes turn."""
     path = Path(path).resolve()
@@ -270,6 +283,9 @@ def ensure_helper(bundle, home, origin, previous, requested_port=None):
     urn = identity["urn"]
     if previous and previous.get("agent_urn") != urn:
         raise ValueError("Saved onboarding identity differs from the local helper; no identity was replaced")
+    trust = bundle_policy_trust(bundle)
+    if origin != trust["platform_origin"]:
+        raise ValueError("The requested Platform differs from the independently verified release origin")
     saved_port = previous.get("port") if previous else None
     if saved_port and requested_port and saved_port != requested_port:
         raise ValueError("This profile already owns a helper port; rerun without --port to preserve its connection")
@@ -287,6 +303,16 @@ def ensure_helper(bundle, home, origin, previous, requested_port=None):
             port = probe.getsockname()[1]
         url = f"http://127.0.0.1:{port}"
         running_urn = None
+    pin_policy_trust(bundle, data, release=trust["release"])
+    if running_urn == urn:
+        if not previous or previous.get("bundle") != str(bundle):
+            raise RuntimeError("A helper from another release is still running for this identity; stop that helper safely and rerun onboarding")
+        try:
+            active_trusted = verified_helper_disclosure(url, trust)
+        except (OSError, ValueError):
+            active_trusted = False
+        if not active_trusted:
+            raise RuntimeError("The running helper has not loaded this release's verified policy root and Platform ID; stop that helper safely and rerun onboarding")
     process = None
     if running_urn is None:
         process = start_helper_supervisor({"helper": str(helper), "identity_dir": str(data), "platform": origin,
@@ -296,6 +322,8 @@ def ensure_helper(bundle, home, origin, previous, requested_port=None):
             _, actual = helper_info(url)
             if actual != urn:
                 raise RuntimeError("The helper listener changed identity during startup")
+            if not verified_helper_disclosure(url, trust):
+                raise ValueError("The helper has not loaded the verified release policy")
             ensure_platform_registration(url, urn)
             return {"agent_urn": urn, "port": port, "helper_url": url, "identity_dir": str(data), "helper": str(helper)}
         except (OSError, ValueError) as exc:
@@ -533,6 +561,9 @@ def onboard(args):
         if existing_urn and (not previous or previous.get("agent_urn") != existing_urn):
             raise ValueError("This profile already has a manually managed Agent Comm identity; use configure_hermes.py to preserve it")
         bundle = retain_bundle(args.bundle_dir, home)
+        trust = bundle_policy_trust(bundle)
+        if origin != trust["platform_origin"]:
+            raise ValueError("The requested Platform differs from the independently verified release origin")
         subprocess.run([sys.executable, str(bundle / "install.py")], check=True, env=clean_environment(home, source))
         from configure_hermes import PAIR_METHODS, WEB_ACTION_METHODS
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey  # Verify host prerequisite before creating a request.

@@ -32,6 +32,9 @@ import onboard_hermes
 from agent_comm_runtime.remote import RemoteBridge, hermes_principal
 
 TEST_PACKAGES = {"agent-comm-runtime": "0.1.0", "hermes-platform-agent-comm": "1.3.0"}
+TEST_TRUST = {"schema_version": 1, "release": "fixture", "platform_origin": "https://agents.example.org",
+              "platform_peer_id": "12D3KooW" + "A" * 45, "policy_root_public_key_hex": "a" * 64,
+              "verification_note": "Independent fixture key review"}
 
 
 class TestBundleInstaller(unittest.TestCase):
@@ -42,6 +45,7 @@ class TestBundleInstaller(unittest.TestCase):
         for name in ("install.py", "configure_hermes.py"):
             shutil.copy2(SCRIPTS / name, self.root / name)
         (self.root / "README.md").write_text("test distribution", encoding="utf-8")
+        (self.root / "policy-trust.json").write_text(json.dumps(TEST_TRUST), encoding="utf-8")
         self.helper_name = "agent-comm-helper.exe" if install.host_platform().startswith("windows-") else "agent-comm-helper"
         (self.root / self.helper_name).write_bytes(b"verified test helper; never executed")
         for name, version in TEST_PACKAGES.items():
@@ -58,7 +62,7 @@ class TestBundleInstaller(unittest.TestCase):
         files = {path.relative_to(self.root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
                  for path in self.root.rglob("*") if path.is_file() and path.name != "SHA256SUMS.json"}
         (self.root / "SHA256SUMS.json").write_text(json.dumps({
-            "platform": install.host_platform(), "packages": TEST_PACKAGES, "files": files
+            "release": "fixture", "platform": install.host_platform(), "packages": TEST_PACKAGES, "files": files
         }), encoding="utf-8")
         return files
 
@@ -68,13 +72,63 @@ class TestBundleInstaller(unittest.TestCase):
             self.assertEqual(install.main(["--bundle-dir", str(self.root), "--check-only"]), 0)
         run.assert_not_called()
 
+    def test_policy_trust_is_required_sha_covered_and_schema_checked(self):
+        trust_path = self.root / "policy-trust.json"
+        trust_path.write_text(json.dumps({**TEST_TRUST, "policy_root_public_key_hex": "b" * 64}), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "SHA256 mismatch: policy-trust.json"):
+            install.verify_bundle(self.root)
+        trust_path.unlink()
+        with self.assertRaisesRegex(ValueError, "missing: policy-trust.json"):
+            install.verify_bundle(self.root)
+        trust_path.write_text(json.dumps({**TEST_TRUST, "platform_origin": "http://agents.example.org"}), encoding="utf-8")
+        self.manifest()
+        with self.assertRaisesRegex(ValueError, "HTTPS Platform origin"):
+            install.verify_bundle(self.root)
+        trust_path.write_text(json.dumps({**TEST_TRUST, "policy_root_private_key_hex": "c" * 64}), encoding="utf-8")
+        self.manifest()
+        with self.assertRaisesRegex(ValueError, "extra fields"):
+            install.verify_bundle(self.root)
+        trust_path.write_text(json.dumps(TEST_TRUST)[:-1] + ',"release":"fixture"}', encoding="utf-8")
+        self.manifest()
+        with self.assertRaisesRegex(ValueError, "Duplicate policy-trust.json field"):
+            install.verify_bundle(self.root)
+
+    def test_manual_pin_requires_existing_identity_and_passes_exact_release_anchors(self):
+        identity = self.root / "original-identity"
+        identity.mkdir()
+        key = identity / "identity_sk.pem"
+        key.write_bytes(b"existing identity fixture")
+        expected = {"pinned": True, "policy_root_public_key": TEST_TRUST["policy_root_public_key_hex"],
+                    "platform_id": TEST_TRUST["platform_peer_id"]}
+        with patch.object(install.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, json.dumps(expected))) as run:
+            self.assertEqual(install.pin_policy_trust(self.root, identity, release="fixture"), TEST_TRUST)
+        command = run.call_args.args[0]
+        self.assertEqual(command[1:3], ["v2-ensure-policy-root", str(identity)])
+        self.assertEqual(command[3:5], [TEST_TRUST["policy_root_public_key_hex"], TEST_TRUST["platform_peer_id"]])
+        self.assertEqual(key.read_bytes(), b"existing identity fixture")
+        with patch.object(install.subprocess, "run") as run:
+            with self.assertRaisesRegex(ValueError, "existing helper identity"):
+                install.pin_policy_trust(self.root, self.root / "new-identity", release="fixture")
+        run.assert_not_called()
+
+    def test_pin_only_does_not_install_wheels_or_require_hermes(self):
+        identity = self.root / "identity"
+        identity.mkdir()
+        (identity / "identity_sk.pem").write_bytes(b"existing identity fixture")
+        with patch.object(install, "ensure_hermes", side_effect=AssertionError("must not inspect Hermes")), \
+             patch.object(install, "install_wheels", side_effect=AssertionError("must not install wheels")), \
+             patch.object(install, "pin_policy_trust", return_value=TEST_TRUST) as pin, \
+             redirect_stdout(io.StringIO()):
+            self.assertEqual(install.main(["--bundle-dir", str(self.root), "--pin-only", "--identity-dir", str(identity)]), 0)
+        pin.assert_called_once_with(self.root, identity, release="fixture")
+
     def test_wrong_os_bundle_is_rejected_before_install_but_builder_can_verify_it(self):
         target = "linux-amd64" if install.host_platform().startswith("windows-") else "windows-amd64"
         target_helper = "agent-comm-helper.exe" if target.startswith("windows-") else "agent-comm-helper"
         (self.root / self.helper_name).rename(self.root / target_helper)
         files = self.manifest()
         (self.root / "SHA256SUMS.json").write_text(json.dumps({
-            "platform": target, "packages": TEST_PACKAGES, "files": files
+            "release": "fixture", "platform": target, "packages": TEST_PACKAGES, "files": files
         }), encoding="utf-8")
         with patch.object(install, "ensure_hermes", side_effect=AssertionError("must not inspect Hermes")), \
              patch.object(install.subprocess, "run") as run, \
@@ -91,7 +145,7 @@ class TestBundleInstaller(unittest.TestCase):
             (self.root / self.helper_name).rename(self.root / "agent-comm-helper")
         files = self.manifest()
         (self.root / "SHA256SUMS.json").write_text(json.dumps({
-            "platform": "macos-arm64", "packages": TEST_PACKAGES, "files": files
+            "release": "fixture", "platform": "macos-arm64", "packages": TEST_PACKAGES, "files": files
         }), encoding="utf-8")
         with patch.object(install, "host_platform", return_value="macos-amd64"), \
              redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()) as error:
@@ -101,7 +155,7 @@ class TestBundleInstaller(unittest.TestCase):
         (self.root / "agent-comm-helper").rename(self.root / "agent-comm-helper.exe")
         files = self.manifest()
         (self.root / "SHA256SUMS.json").write_text(json.dumps({
-            "platform": "macos-arm64", "packages": TEST_PACKAGES, "files": files
+            "release": "fixture", "platform": "macos-arm64", "packages": TEST_PACKAGES, "files": files
         }), encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "must contain agent-comm-helper"):
             install.verify_bundle(self.root, cross_platform=True)
@@ -111,7 +165,7 @@ class TestBundleInstaller(unittest.TestCase):
         for variant in (None, {}, [], "linux-arm64"):
             with self.subTest(variant=variant):
                 (self.root / "SHA256SUMS.json").write_text(json.dumps({
-                    "platform": variant, "packages": TEST_PACKAGES, "files": files
+                    "release": "fixture", "platform": variant, "packages": TEST_PACKAGES, "files": files
                 }), encoding="utf-8")
                 with self.assertRaisesRegex(ValueError, "supported helper platform"):
                     install.verify_bundle(self.root, cross_platform=True)
@@ -124,7 +178,7 @@ class TestBundleInstaller(unittest.TestCase):
         files = self.manifest()
         files["../outside.txt"] = "0" * 64
         (self.root / "SHA256SUMS.json").write_text(json.dumps({
-            "platform": install.host_platform(), "packages": TEST_PACKAGES, "files": files
+            "release": "fixture", "platform": install.host_platform(), "packages": TEST_PACKAGES, "files": files
         }), encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "escapes"):
             install.verify_bundle(self.root)
@@ -133,7 +187,7 @@ class TestBundleInstaller(unittest.TestCase):
         files = self.manifest()
         files.pop(next(key for key in files if key.endswith(".whl")))
         (self.root / "SHA256SUMS.json").write_text(json.dumps({
-            "platform": install.host_platform(), "packages": TEST_PACKAGES, "files": files
+            "release": "fixture", "platform": install.host_platform(), "packages": TEST_PACKAGES, "files": files
         }), encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "not covered"):
             install.verify_bundle(self.root)
@@ -156,7 +210,7 @@ class TestBundleInstaller(unittest.TestCase):
         for packages in (None, {"agent-comm-runtime": "0.1.0"}, {**TEST_PACKAGES, "unexpected-package": "1.0"}):
             with self.subTest(packages=packages):
                 (self.root / "SHA256SUMS.json").write_text(json.dumps({
-                    "platform": install.host_platform(), "files": files, "packages": packages
+                    "release": "fixture", "platform": install.host_platform(), "files": files, "packages": packages
                 }), encoding="utf-8")
                 with self.assertRaisesRegex(ValueError, "package versions"):
                     install.verify_bundle(self.root)

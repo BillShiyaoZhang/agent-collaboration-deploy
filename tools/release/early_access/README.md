@@ -1,6 +1,6 @@
 # Agent Comm 早期接入包
 
-包内的 `SHA256SUMS.json` 记录本次发布标识、runtime 和 Hermes connector 的确切版本与文件校验值。安装脚本核对这些版本后才安装。
+包内的 `SHA256SUMS.json` 记录本次发布标识、runtime 和 Hermes connector 的确切版本与文件校验值。v2 包还包含发布者独立核对的 `policy-trust.json`，记录策略根**公钥**、预期 Platform Peer ID 与 HTTPS 地址；它同样受 SHA 校验。安装脚本先核对这些内容，再固定到本机已有 helper 身份。包内没有策略根私钥；从平台 bootstrap 临时读取的 ID 不能代替发布者的核对。
 
 本指南适用于 `2026-09-18-onboarding` 及后续配套发布。安装前核对包内 `SHA256SUMS.json` 与下载目录的 `release-manifest.json`；旧包不包含下方自动接入入口。
 
@@ -14,7 +14,7 @@
 - [macOS Apple 芯片接入包](https://agent-communication.online/downloads/agent-comm-early-access-macos-arm64.zip)
 - [下载文件校验清单](https://agent-communication.online/downloads/release-manifest.json)
 
-将 ZIP 解压，打开终端并进入解压后的包目录，再执行下方命令。该目录应包含 `onboard_hermes.py`、`install.py`、`configure_hermes.py`、本系统的 helper、两个 wheel 和校验文件。GitHub 的 `tools/release/early_access` 目录只有脚本源码，不能代替完整接入包。
+将 ZIP 解压，打开终端并进入解压后的包目录，再执行下方命令。v2 包目录应包含 `onboard_hermes.py`、`install.py`、`configure_hermes.py`、`policy-trust.json`、本系统的 helper、两个 wheel 和校验文件。GitHub 的 `tools/release/early_access` 目录只有脚本源码，不能代替完整接入包。
 
 首次设置仍需要本机安装和配置权限。不熟悉这些操作时，可以把本页交给有安装能力的 agent 或协助者，先核对环境与配置计划。预编译接入包无需自己安装 Go 编译器；交叉编译与文件校验不等于所有系统上的真实 Hermes 组合都已验证，请同时阅读该版本的发布说明。
 
@@ -30,7 +30,7 @@ python3 onboard_hermes.py
 
 Windows 使用可用的 `python` 命令；也可以直接使用 Hermes 的 Python 路径。入口会从当前解释器或 `hermes` 启动器识别实际 Hermes Python，保留 `HERMES_HOME` 指定的 profile。明确选择其他安装或 profile 时使用 `--python /path/to/hermes/venv/bin/python --hermes-home /path/to/profile`。不会把组件装进另一个通用 Python；uv 创建的无 pip 环境会自动使用 `uv pip --python`，无需手工补装 pip。
 
-脚本校验并把接入包保存到该 profile 的 `agent-comm/releases/`，复用或初始化该 profile 的独立 helper 身份，启动并签名注册。它返回 `agent_urn` 和 `claim_url`，并启动独立后台任务。**由已经登录 Web 的主人或其授权助手打开这个链接，在网页确认连接即可**。无需复制控制台 URN、编写到期时间，或再向 Hermes 发配对命令。
+脚本校验并把接入包保存到该 profile 的 `agent-comm/releases/`，复用或初始化该 profile 的独立 helper 身份，在启动 helper 前幂等固定包内策略根和 Platform ID，再确认本机 helper 实际加载同一组信任信息与已验签策略，然后签名注册。若旧 helper 仍占用该身份端口、但没有加载新信任信息，脚本会停止而不会把旧进程当作新连接；先用原有方式安全停止旧 helper，再重跑即可，不能删身份目录。成功后它返回 `agent_urn` 和 `claim_url`，并启动独立后台任务。**由已经登录 Web 的主人或其授权助手打开这个链接，在网页确认连接即可**。无需复制控制台 URN、编写到期时间，或再向 Hermes 发配对命令。
 
 链接在 30 分钟内有效，默认申请 7 天的状态读取与 Hermes 对话权限；网页展示确切范围和到期时间。网页确认后，后台任务验证该控制台签名、身份、原始请求和权限范围，备份并合并配置、安装待办插件，再使用 Hermes 的真实 CLI 启动 Gateway。只有探测到这个 profile 的存活 Gateway 和 `agent_comm` 已连接，才通知网页本机配置完成。最后在 Web 发一条消息并检查真正回复及完成状态，才能确认模型往返成功。
 
@@ -52,7 +52,7 @@ python3 onboard_hermes.py --status
 
 1. 确认发布清单已包含本次更新后，下载匹配本机系统的新版接入包，解压到新目录；先记下原 helper 身份目录与端口、实际 Hermes Python 和 profile，再停止原 helper、Gateway 与 dashboard。
 2. 在新包目录，用原 Hermes Python 执行下方第 1 节的校验和安装命令。安装器会重装包内的 runtime 与 connector，即使包版本号与原安装相同。
-3. 用新包中的 helper 执行第 2 节的 `daemon` 命令，将 `./agent-data` 换成原身份目录的实际路径。已有身份无需再次执行 `init`，也不要在新包目录创建另一个身份。
+3. 在原 helper 已安全停止时，执行 `python install.py --pin-only --identity-dir 原身份目录`。安装器校验包、要求已有身份密钥，并用新 helper 幂等固定发布者核对的策略根和 Platform ID；冲突的既有 pin 会拒绝覆盖。随后用新包中的 helper 执行第 2 节的 `daemon` 命令，将 `./agent-data` 换成原身份目录的实际路径。已有身份无需再次执行 `init`，也不要在新包目录创建另一个身份。
 4. 按第 4 节使用原控制台 URN、明确的新期限及 `--allow-web-actions` 先检查计划再重新配对；使用非默认 helper 端口时，同时传入原来的 `--helper-url`。新版脚本会更新本机待办界面并备份配置。
 5. 重启 Gateway 与 dashboard，重载 Desktop；在 Web 检查连接与已授权功能。消息、好友请求、共享已读和协作操作应以本机同步结果为准。
 
@@ -67,7 +67,7 @@ python install.py --check-only
 python install.py
 ```
 
-第一条仅校验文件与 wheel；第二条使用当前解释器安装包内 wheel，无 pip 的 Hermes venv 自动使用已有 uv。已有 aiohttp 等宿主依赖需满足提示版本，不联网自动替换其它宿主依赖。保留你的原密钥、mailbox 与数据库。
+第一条仅校验文件、wheel 和发布信任资料；第二条使用当前解释器安装包内 wheel，无 pip 的 Hermes venv 自动使用已有 uv。已有 aiohttp 等宿主依赖需满足提示版本，不联网自动替换其它宿主依赖。单独执行第二条不会猜测你的身份目录；须在 helper 启动前按下节固定信任资料。保留你的原密钥、mailbox 与数据库。
 
 ## 2. 运行 helper
 
@@ -75,6 +75,7 @@ Windows PowerShell，每行一条命令：
 
 ```powershell
 .\agent-comm-helper.exe init .\agent-data
+python install.py --pin-only --identity-dir .\agent-data
 .\agent-comm-helper.exe daemon .\agent-data https://agent-communication.online 45042
 ```
 
@@ -83,10 +84,11 @@ Linux / macOS：
 ```sh
 chmod +x ./agent-comm-helper
 ./agent-comm-helper init ./agent-data
+python3 install.py --pin-only --identity-dir ./agent-data
 ./agent-comm-helper daemon ./agent-data https://agent-communication.online 45042
 ```
 
-让 daemon 保持运行。升级用户应把 agent-data 换成自己的原身份目录；每个身份独立目录和端口，不与另一个身份共用。helper 本机 HTTP 只绑定 loopback。
+让 daemon 保持运行。升级用户不重复执行 `init`，只对原身份目录执行 `--pin-only`，然后重启新 helper；不能用另一个身份绕过冲突的固定记录。每个身份独立目录和端口，不与另一个身份共用。helper 本机 HTTP 只绑定 loopback。启动后读取本机 `/api/v2/disclosure`，只有 `policy_verified=true`、`policy_root_public_key` 和 `platform_id` 与包内资料一致时才算策略就绪；生产尚未启用签名策略时不能把安装成功当作 v2 通信通过。
 
 ## 3. 合并 Hermes 配置
 

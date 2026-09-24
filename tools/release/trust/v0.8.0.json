@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "release": "v0.8.0",
+  "platform_origin": "https://agent-communication.online",
+  "platform_peer_id": "12D3KooWNApwdxwbXY27N44cGxTXY15Hn8yRx9m9Yw5St5A7kTpK",
+  "policy_root_public_key_hex": "ef357a906bb59ecd176b7551d5f92870b5ec38ce04f92c1693c1593f910ebacc",
+  "verification_note": "Release owner supplied the off-server v0.8.0 root and preserved production Platform identity on 2026-09-24"
+}
