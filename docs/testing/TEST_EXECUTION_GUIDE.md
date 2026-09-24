@@ -423,25 +423,27 @@ flowchart LR
 
 **目标**
 
-验证最重要的双边用户旅程：Alice 从 Web 提交联系人，Bob 的 Agent 收到，Bob 用户做接受/拒绝决定，双方最终同步。
+验证最重要的双边用户旅程：Alice 从 Web 提交联系人，v0.8.0 双方 Agent 在签名 `private` 策略下通过 v2 交付请求，Bob 用户做接受/拒绝决定，双方最终同步。Web 返回 `requested` 只证明 Alice Agent 已在本地持久排队，不证明 Platform 准入或 Bob 收件。
 
 **Codex 可代办（C/C→H）**
 
 - 创建 A/B 测试账户、浏览器会话和联系人测试数据。
+- 对隔离生成的合成身份，Codex 可从预先约定的独立渠道核对双方完整 Ed25519 身份公钥，并分别在 A/B 原身份目录执行 `v2-pin-peer`；记录核对来源和 pin 结果，不从 Platform 搜索结果或 Web URN 推断主人身份。
 - 自动打开联系人表单、填写姓名/别名/URN，验证未勾选确认时按钮禁用。
-- 监听 RPC、helper、Platform 和双方 Store，记录 request_id、contact_id、时间线和截图。
+- 分别监听本地入队、v2 peer pin/会话、Platform 准入、Bob 持久收件和双方 Store，记录 request_id、contact_id、时间线和截图。
 - Alice 提交后自动注入测试网络断开、刷新页面、恢复连接和执行原请求核实。
 - 在 Bob 做完决定后，自动检查双方联系人、attention、outbox 和 Web 副本。
 
 **你必须参与（C→H）**
 
+- 如果用真实 Alice/Bob 身份验收，你分别以两边主人身份，通过平台之外的可信渠道核对**对方完整 Ed25519 身份公钥与真人/设备的绑定**，确认后再让各自 Agent 固定；Codex 不能把短 URN、平台注册表或网页授权当成该核对。
 - Alice 的“提交联系人”如果要代表真实用户意图，由你确认表单并点击提交；Codex 可以先填好并暂停在确认点。
-- Bob 的接受和拒绝必须由你在 Bob 原生 Hermes 或 Bob Web 的具体请求卡中做出；Codex 不能代替主人接受好友或审批。
+- 真人体验验收中，Bob 的接受和拒绝由你在 Bob 原生 Hermes 或 Bob Web 的具体请求卡中做出；合成身份的预定分支可由 Codex 操作，但不能记作真人决定。
 - 需要验证两个决定时，你可以先做一次接受，再清理临时身份后做一次拒绝；不能把同一次请求的两个结果混在一起。
 
 **环境**
 
-E2 staging；两个 helper；最好两个 Hermes profile；A/B Web 账户；Alice Console 有 contacts.add，Bob Console 若从 Web 决定则有 contacts.respond。
+E2 staging；两个 v0.8.0 helper、已验证的签名 `private` 策略、双方各自固定的策略根与 Platform Peer ID；最好两个 Hermes profile；A/B Web 账户；Alice Console 有 contacts.add，Bob Console 若从 Web 决定则有 contacts.respond。双方另须独立核对并固定**彼此的完整 Ed25519 身份公钥**；旧联系人 `trusted`、仅有 URN 或 Web 配对均不能替代。旧 v1 兼容路径按 T02 单独记录，v2 投递失败不能静默回退到 v1。
 
 **流程**
 
@@ -454,11 +456,18 @@ sequenceDiagram
     participant B as Bob Agent
     actor Bob as Bob 用户
     participant WB as Bob Web
+    Alice->>A: 独立核对并固定 Bob 完整 Ed25519 公钥
+    Bob->>B: 独立核对并固定 Alice 完整 Ed25519 公钥
     Alice->>WA: 打开联系人并填写 Bob URN
     WA->>WA: 勾选明确确认
     WA->>A: contacts.add
-    A->>P: 持久化并发送好友请求
-    P->>B: 转交加密请求
+    A->>A: 本地持久排队好友请求
+    A-->>WA: requested（仅本地排队）
+    A->>P: 基于双向 pin 建立 v2 会话并发送加密请求
+    P-->>A: v2 准入/入队回执（非 Bob 收件）
+    P->>B: 转交 v2 请求
+    B->>B: 验签、解密并持久收件
+    B-->>P: 收件 ACK
     B->>Bob: attention/原生请求卡
     alt Bob 接受
         Bob->>B: 接受具体请求
@@ -475,23 +484,28 @@ sequenceDiagram
     end
 ~~~
 
+缺少任一方的 peer pin、签名策略或 v2 会话时，`requested` 仍只表示本地排队；应查看本机发送状态和明确失败/隔离原因，不得宣称平台已准入、Bob 已收到，也不得静默降级为 v1。Web 到 Alice Agent 的受管控制请求与两 Agent 间的 v2 好友请求是两段不同链路。
+
 **在项目中的环节**
 
 ~~~mermaid
 flowchart LR
     UI["Web 联系人表单"] --> ROUTE["Web /api/agents/:id/control"]
-    ROUTE --> RPC["agent-comm-control/v1"]
-    RPC --> MQ["Platform MQ"]
-    MQ --> HA["Alice helper"]
-    HA --> SA["Alice Store contacts.add"]
-    SA --> OUT["好友请求 outbox"]
-    OUT --> MQ
-    MQ --> HB["Bob helper"]
-    HB --> SB["Bob Store attention/contact_requests"]
+    ROUTE --> RPC["受管 Web 控制请求"]
+    RPC --> CMQ["Platform 控制路由"]
+    CMQ --> HA["Alice helper"]
+    HA --> SA["Alice Store 本地持久排队"]
+    SA --> REQUESTED["requested：仅本地队列"]
+    REQUESTED --> SESSION["双向 peer pin + v2 会话"]
+    PINA["Alice 固定 Bob 完整公钥"] --> SESSION
+    PINB["Bob 固定 Alice 完整公钥"] --> SESSION
+    SESSION --> ADMIT["Platform v2 准入/入队"]
+    ADMIT --> HB["Bob helper 验签解密"]
+    HB --> SB["Bob Store 持久收件/待办"]
     SB --> HUMAN["Bob 用户决定"]
     HUMAN --> RESP["contacts.respond"]
-    RESP --> MQ
-    MQ --> SA
+    RESP --> ADMIT_R["回应的 Platform v2 准入/转交"]
+    ADMIT_R --> SA
     SA --> PROJ["Web 加密副本/联系人视图"]
 ~~~
 
@@ -499,7 +513,9 @@ flowchart LR
 
 - 页面打开不会自动写入；
 - 未勾选确认时按钮禁用；
-- 提交后显示 pending/requested，而不是 connected；
+- 提交后显示 pending/requested，而不是 connected；它仅表示本地持久排队，不能当作 Platform 准入或 Bob 收件；
+- 双方完整 Ed25519 身份公钥经独立渠道核对并各自固定后才交付 v2；缺 pin 或会话失败时无静默 v1 回退；
+- 单独取得 Platform v2 准入、Bob 持久收件和 Bob 主人决定的证据；
 - Bob 接受才进入 connected；
 - Bob 拒绝后不得继续发送后续业务消息；
 - 断线刷新后的重试保留原业务参数，不创建第二个联系人请求；

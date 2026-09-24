@@ -111,25 +111,52 @@ Bob 使用自己的 profile、Console URN 和 helper URL 重复一次。检查�
 
 ## 5. 第一组：好友请求的双边闭环
 
-### A 发起，B 接受
-
-1. Alice 在原生 Hermes 中提出“把 Bob 的 URN 加为联系人”，或在 Alice Web 的联系人表单填写 Bob URN。
-2. 如果由原生 Agent 发起，Alice 必须在自己的原生确认卡确认联系人绑定；如果由 Web 发起，Alice 必须完成表单确认且 Console 具有 contacts.add。
-3. 保存 request_id、contact_id、Alice/Bob URN 和时间。
-4. 检查 Alice 的状态：请求应为 requested/pending，不能立即显示 connected。
-5. 等待 Bob 的 helper 收到好友请求；检查 Bob 的 attention 中出现 friend_request_received。
-6. Bob 用户在 Bob 的原生 Hermes 中选择接受。若测试 Web 接受，则 Bob Console 必须单独拥有 contacts.respond，且点击的是具体请求的接受按钮。
-7. 等待双方同步；A、B 的联系人快照必须有相同 URN 和请求关联，connection_status 最终为 connected。
-8. Bob 的待办关闭；Alice 不应因为“平台 ACK”提前显示已连接。
-
-记录四个独立事件：
+本组在现网 v0.8.0、签名 `private` 策略下验收 v2 好友请求。开始前，Alice 和 Bob 各自在平台之外的可信渠道核对**对方完整 Ed25519 身份公钥**与主人/设备的绑定，然后分别把对方公钥固定到自己的原身份目录；仅有 URN、旧联系人 `trusted`、平台注册表结果或 Web Console 配对都不满足此条件。还要核对两端运行中的已验证签名策略、固定的策略根及 Platform Peer ID。对隔离生成的合成 A/B 身份，Codex 可按预先约定的独立渠道核对并执行两侧 pin；真实身份的主人核对不能由 Codex 从网页或平台结果推断。
 
 ~~~text
-A 本地保存请求
-Platform 暂存/转交
-B agent 持久收到请求
-B 用户接受并回执
+agent-comm-helper v2-pin-peer <ALICE_KEYS_DIR> <BOB_URN> <BOB_FULL_ED25519_PUBLIC_KEY_HEX> <independent_verification_note>
+agent-comm-helper v2-pin-peer <BOB_KEYS_DIR> <ALICE_URN> <ALICE_FULL_ED25519_PUBLIC_KEY_HEX> <independent_verification_note>
 ~~~
+
+两端 pin 和 v2 会话就绪后才能把 Web `contacts.add` 创建的请求作为 v2 消息交付；缺少 pin、策略或会话时，不得静默走旧 v1 路径。Web 控制请求可先在 Alice Agent 本地形成 `requested`，它只表示持久排队，不是 Platform 已准入、更不是 Bob 已收到。分别保存本地队列状态、Platform v2 准入、Bob 验签解密后的持久收件以及 Bob 主人决定的证据。
+
+### A 发起，B 接受
+
+1. 核对上述 A/B 双向 peer pin、已验证签名策略及各自身份目录，不能用一端固定代替另一端。
+2. Alice 在原生 Hermes 中提出“把 Bob 的 URN 加为联系人”，或在 Alice Web 的联系人表单填写 Bob URN。如果由原生 Agent 发起，Alice 在自己的原生确认卡确认联系人绑定；如果由 Web 发起，完成表单确认且 Alice Console 具有 contacts.add。合成账户的预定动作可由 Codex 代办；真实用户意图须由主人确认。
+3. 保存 request_id、contact_id、Alice/Bob URN 和时间；先检查 Alice Store 已持久排队。Web 的 `requested`/`pending` 不能立即显示为 `connected`，也不能记为已投递。
+4. 单独确认 A/B 基于彼此已固定的完整公钥建立 v2 会话、请求按当前签名策略形成 v2 信封，并取得 Platform 的准入/入队证据。Platform ACK 仍不证明 Bob 已收件。
+5. 等待 Bob helper 验签、解密并持久收到同一请求，检查 Bob attention 的 `friend_request_received`；这一步与 Platform 准入分开记录。
+6. Bob 主人在 Bob 的原生 Hermes 中选择接受。若测试 Web 接受，则 Bob Console 必须单独拥有 contacts.respond，且点击的是具体请求的接受按钮；合成身份可按预定分支由 Codex 点击，不计为真人决定。
+7. 等待接受回执及双方同步；A、B 的联系人快照必须有相同 URN 和请求关联，connection_status 最终为 connected。Bob 待办关闭；Alice 不能因为本地 `requested` 或 Platform ACK 提前显示已连接。
+
+记录六个独立事件，不把前一项当成后一项：
+
+~~~text
+A/B 各自独立核对并固定对方完整 Ed25519 身份公钥
+A 本地持久排队（requested）
+A/B 基于双向 pin 建立 v2 会话
+Platform 按当前签名策略准入/入队
+B agent 验签解密并持久收到请求
+B 主人接受并发出回执
+~~~
+
+~~~mermaid
+flowchart TD
+    PINA["Alice 独立核对并固定 Bob 完整 Ed25519 公钥"] --> SESSION["双方 peer pin + v2 会话"]
+    PINB["Bob 独立核对并固定 Alice 完整 Ed25519 公钥"] --> SESSION
+    WEB["Alice Web 确认 contacts.add"] --> LOCAL["Alice Store 本地持久排队：requested"]
+    LOCAL --> SESSION
+    SESSION --> ADMIT["Platform v2 准入/入队"]
+    ADMIT --> RECEIVE["Bob 验签解密并持久收件"]
+    RECEIVE --> OWNER{"Bob 主人决定"}
+    OWNER -- "接受" --> ACCEPT["具体请求接受并回执"]
+    OWNER -- "拒绝" --> DENY["具体请求拒绝并回执"]
+    ACCEPT --> SYNC["双方按同一请求同步终态"]
+    DENY --> SYNC
+~~~
+
+若停在本地队列，先查 peer pin、已验证策略、v2 会话和明确失败/隔离状态；不得用 v1 重发或把 `requested` 写成 Bob 已收到。Web 到 Alice Agent 的受管控制链路与两 Agent 的 v2 好友请求链路分开取证。
 
 ### A 发起，B 拒绝
 

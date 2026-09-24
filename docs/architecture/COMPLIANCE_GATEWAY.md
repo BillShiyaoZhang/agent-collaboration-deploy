@@ -1,6 +1,6 @@
 # 可验证的隐私与合规解密协议（v2 源码与设计边界）
 
-**状态（2026-09-24）：v2 初版源码和服务端代码已部署，现网已启用签名 `private` 策略（epoch 1、`allow_v1=true`）；公开安装包截至此时仍为 r2。** 旧 v1 Agent 消息仍可用，但没有 v2 私密信封的保证；支持 v2 的双方必须先固定策略根、预期 Platform PeerID 和彼此身份公钥，再使用 v2 发送路径。当前没有启用 `compliance`。本文说明同一 Platform 的 Agent A ↔ Agent B 经 MQ 通信的密码学边界，也记录尚未落地的加强目标；不能据此宣称某地区的法律合规已经成立。现行 v1 接入点见[现行架构](OVERVIEW.md)、[Platform 架构](../../agent-comm-platform/docs/architecture/OVERVIEW.md)和[SDK 协议](../../agent-comm-platform/agent-comm/docs/architecture/PROTOCOL.md)。Web 工作台是另一个托管通信端点，已经会解密它获准收到的内容；本文的“平台不可解密”只指指定的 Agent A ↔ Agent B 消息相对于 MQ/Relay/合规网关的密码学边界。
+**状态（2026-09-24 发布后）：v2 初版源码和服务端代码已部署，现网已启用签名 `private` 策略（epoch 1、`allow_v1=true`），公开安装包为 v0.8.0。** 旧 v1 Agent 消息仍可用，但没有 v2 私密信封的保证；支持 v2 的双方必须先固定策略根、预期 Platform PeerID 和彼此身份公钥，再使用 v2 发送路径。当前没有启用 `compliance`。本文说明同一 Platform 的 Agent A ↔ Agent B 经 MQ 通信的密码学边界，也记录尚未落地的加强目标；不能据此宣称某地区的法律合规已经成立。现行 v1 接入点见[现行架构](OVERVIEW.md)、[Platform 架构](../../agent-comm-platform/docs/architecture/OVERVIEW.md)和[SDK 协议](../../agent-comm-platform/agent-comm/docs/architecture/PROTOCOL.md)。Web 工作台是另一个托管通信端点，已经会解密它获准收到的内容；本文的“平台不可解密”只指指定的 Agent A ↔ Agent B 消息相对于 MQ/Relay/合规网关的密码学边界。
 
 ## 已落地的初版与尚需加强之处
 
