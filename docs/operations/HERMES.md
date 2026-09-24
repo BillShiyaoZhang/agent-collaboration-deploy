@@ -1,5 +1,7 @@
 # Hermes 源码接入与升级
 
+Platform 从隐私模式切换到合规模式时，先按 [v2 迁移步骤](V2_MIGRATION.md)安排用户告知、独立密钥核对、本机披露授权与旧队列处理；普通 Hermes 升级不自动表示同意披露。
+
 首次使用预编译包请直接阅读 [接入包说明](../../tools/release/early_access/README.md)。本文用于维护固定版本源码安装；需要已能正常运行的 Hermes、Go 1.25.7+，以及 Hermes 使用的 Python 3.11+ 环境。
 
 Compose 运行云端 Web、Platform 和 nginx。Go helper 与 Hermes Gateway 在同一设备运行：helper 连接云端 HTTPS，Hermes 插件连接本机 loopback helper。

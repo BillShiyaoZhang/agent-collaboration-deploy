@@ -46,6 +46,8 @@ python3 onboard_hermes.py --status
 
 ## 已有客户端升级
 
+若收到 Platform 将切换为合规模式的通知，先阅读[隐私模式升级与选择说明](../../../docs/users/PRIVACY_MODE_UPGRADE.md)及[运维迁移步骤](../../../docs/operations/V2_MIGRATION.md)。公开安装包是否含 v2 须核对实际发布清单；仅更新网页或服务器不会把本机旧 v1 消息自动变为 v2，也不会替用户同意平台解密。
+
 服务器更新不会替换你电脑上的组件。升级时保留原 helper 身份目录、Hermes profile、密钥、mailbox 和数据库，按下面顺序操作：
 
 1. 确认发布清单已包含本次更新后，下载匹配本机系统的新版接入包，解压到新目录；先记下原 helper 身份目录与端口、实际 Hermes Python 和 profile，再停止原 helper、Gateway 与 dashboard。

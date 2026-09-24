@@ -1,0 +1,18 @@
+# Opt-in overlay for a signed v2 Platform policy. Use with docker-compose.yml.
+# Source paths must be existing files outside the repository; never mount the
+# offline policy-root private key into either service.
+services:
+  platform:
+    volumes:
+      - ${AGENT_V2_PLATFORM_CONFIG:?Set AGENT_V2_PLATFORM_CONFIG}:/etc/platform/config.yaml:ro
+      - ${AGENT_V2_POLICY_FILE:?Set AGENT_V2_POLICY_FILE}:/run/agent-v2/policy.json:ro
+      - ${AGENT_V2_ROOT_PUBLIC_FILE:?Set AGENT_V2_ROOT_PUBLIC_FILE}:/run/agent-v2/policy-root.public:ro
+      - ${AGENT_V2_GATEWAY_PRIVATE_FILE:?Set AGENT_V2_GATEWAY_PRIVATE_FILE}:/run/agent-v2/gateway.private:ro
+      - ${AGENT_V2_RECEIPT_PRIVATE_FILE:?Set AGENT_V2_RECEIPT_PRIVATE_FILE}:/run/agent-v2/receipt.private:ro
+  web:
+    environment:
+      AGENT_V2_POLICY_ROOT_PUBLIC_KEY: ${AGENT_V2_POLICY_ROOT_PUBLIC_KEY_HEX:?Set AGENT_V2_POLICY_ROOT_PUBLIC_KEY_HEX}
+      AGENT_V2_PLATFORM_ID: ${AGENT_V2_PLATFORM_ID:?Set AGENT_V2_PLATFORM_ID}
+      AGENT_MANAGED_ISSUER_PRIVATE_KEY_FILE: /run/agent-v2/managed-issuer.private
+    volumes:
+      - ${AGENT_V2_MANAGED_ISSUER_PRIVATE_FILE:?Set AGENT_V2_MANAGED_ISSUER_PRIVATE_FILE}:/run/agent-v2/managed-issuer.private:ro

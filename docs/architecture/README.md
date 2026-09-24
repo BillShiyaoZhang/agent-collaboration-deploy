@@ -5,6 +5,8 @@
 - [流程图](FLOWS.md)：配对、读取、授权、投递和恢复。
 - [产品决策](DECISIONS.md)：从早期探索中保留的身份、授权、记忆和持久状态原则。
 
+[可验证的隐私与合规解密 v2](COMPLIANCE_GATEWAY.md)：初版源码、信任边界、本地验收与尚未实现的加强项；未发布到线上服务或公开安装包。
+
 未实现的扩展约束见[后续方向](../developers/FUTURE_DIRECTIONS.md)。
 
 实现和命令的归属见 [runtime](../../agent-comm-platform/agent-comm/python/README.md)、[Hermes connector](../../agent-comm-platform/agent-comm/connectors/hermes-platform/README.md) 及 [Web 客户端契约](../../agent-collaboration-web/packages/client-contract/README.md)。

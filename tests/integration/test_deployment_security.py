@@ -86,6 +86,40 @@ class DeploymentSecurity(unittest.TestCase):
                     self.assertNotEqual(result.returncode, 0, key)
                     self.assertIn(key, result.stderr)
 
+    def test_v2_compose_is_opt_in_and_separates_online_keys(self):
+        with tempfile.TemporaryDirectory() as folder:
+            empty = Path(folder) / "empty.env"
+            empty.write_text("")
+            env = {key: value for key, value in os.environ.items()
+                   if not key.startswith("AGENT_V2_")}
+            env.update(NEXTAUTH_SECRET="test-secret", PLATFORM_ADMIN_TOKEN="test-admin",
+                       NEXTAUTH_URL="https://test.example.invalid")
+            base = ("compose", "--env-file", str(empty), "-f", str(ROOT / "docker-compose.yml"))
+            self.assertEqual(docker(*base, "config", "--quiet", env=env).returncode, 0)
+            overlay = (*base, "-f", str(ROOT / "docker-compose.v2.yml"))
+            missing = docker(*overlay, "config", "--quiet", env=env)
+            self.assertNotEqual(missing.returncode, 0)
+            self.assertIn("AGENT_V2_", missing.stderr)
+            keys = ("PLATFORM_CONFIG", "POLICY_FILE", "ROOT_PUBLIC_FILE",
+                    "GATEWAY_PRIVATE_FILE", "RECEIPT_PRIVATE_FILE",
+                    "MANAGED_ISSUER_PRIVATE_FILE")
+            for name in keys:
+                env["AGENT_V2_" + name] = str(Path(folder) / name.lower())
+            env["AGENT_V2_POLICY_ROOT_PUBLIC_KEY_HEX"] = "ab" * 32
+            env["AGENT_V2_PLATFORM_ID"] = "test-platform-id"
+            result = docker(*overlay, "config", "--format", "json", env=env)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            services = json.loads(result.stdout)["services"]
+            platform_targets = {item["target"] for item in services["platform"]["volumes"]}
+            web_targets = {item["target"] for item in services["web"]["volumes"]}
+            self.assertIn("/data", platform_targets)
+            self.assertIn("/etc/platform/config.yaml", platform_targets)
+            self.assertIn("/run/agent-v2/gateway.private", platform_targets)
+            self.assertNotIn("/run/agent-v2/managed-issuer.private", platform_targets)
+            self.assertIn("/app/data", web_targets)
+            self.assertIn("/run/agent-v2/managed-issuer.private", web_targets)
+            self.assertNotIn("/run/agent-v2/gateway.private", web_targets)
+
     def test_nginx_enforces_limits_and_overwrites_forwarded_addresses(self):
         with tempfile.TemporaryDirectory() as folder:
             config = (ROOT / "deploy/nginx/nginx.conf").read_text(encoding="utf-8")
@@ -97,13 +131,17 @@ class DeploymentSecurity(unittest.TestCase):
             config = config.replace("listen 443 ssl;", "listen 8080;")
             config = config.replace("http2 on;", "")
             config = re.sub(r"^\s*ssl_certificate(?:_key)?\s+[^;]+;", "", config, flags=re.M)
-            config = config.replace("server web:3000;", "server 127.0.0.1:8088;")
+            config = config.replace("server web:3000;", "server 127.0.0.1:8089;")
             config = config.replace("server platform:8080;", "server 127.0.0.1:8088;")
             at = config.rfind("}")
             config = config[:at] + '''
     server {
         listen 8088;
         location / { return 200 "$http_x_real_ip|$http_x_forwarded_for"; }
+    }
+    server {
+        listen 8089;
+        location / { return 200 "web-upstream"; }
     }
 ''' + config[at:]
             config_path = Path(folder) / "nginx.conf"
@@ -140,6 +178,10 @@ class DeploymentSecurity(unittest.TestCase):
                 self.assertEqual(status, 200)
                 self.assertNotIn("203.0.113.99", forwarded)
                 self.assertEqual(*forwarded.split("|"))
+                v2_status, v2_forwarded = request("/api/v2/policy")
+                self.assertEqual(v2_status, 200)
+                self.assertEqual(v2_forwarded, forwarded)
+                self.assertEqual(request("/api/auth/csrf"), (200, "web-upstream"))
                 self.assertEqual(request("/api/auth/register", b"x" * 16385)[0], 413)
                 self.assertEqual(request("/api/agents", b"x" * (1024 * 1024 + 1))[0], 413)
                 statuses = [request("/api/auth/" + ("register/" if index % 2 else "callback/credentials"),
