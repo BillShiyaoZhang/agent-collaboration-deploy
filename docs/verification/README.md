@@ -2,6 +2,7 @@
 
 ## 已完成的历史验收
 
+- [2026-09-25 T21 双 helper、外部 Push 与断线恢复补测](T21_STABILITY_2026-09-25.md)：隔离双 helper 与 Web 并发、生产合成 Web Push、TLS 未知结果恢复，以及各项版本和体验边界。
 - [2026-09-18 Hermes 仅凭官网地址自动接入](HERMES_AUTONOMOUS_ONBOARDING_2026-09-18.md)：干净 Hermes、MiniMax China、官网安装入口、网页确认和本机自动配对；真实模型回复与完整验收结论以该报告为准。
 - [2026-09-17 Agent / Web 能力一致性](AGENT_WEB_PARITY_2026-09-17.md)：好友握手、双端消息与已读、在线状态、绑定注册及配对聊天工具的本地修复和验收。
 - [2026-09-16 安全检查与修复](SECURITY_REVIEW_2026-09-16.md)：部署、Web、Platform 与 SDK 的代码审查、依赖漏洞、回归测试及上线边界。

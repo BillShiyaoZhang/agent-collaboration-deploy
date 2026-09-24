@@ -115,7 +115,7 @@ docker compose logs --tail=100
 
 ## 升级、备份与回退
 
-现网签名策略为 `compliance`、epoch 2、`allow_v1=false`，Relay 禁用；策略摘要和到期时间见[迁移指南](V2_MIGRATION.md)与[切换记录](../releases/V2_COMPLIANCE_POLICY_2026-09-25.md)。运营方须在实际到期时间前使用离线根私钥签发更高 epoch，并先处理旧策略下未读或待发的 v2 消息。生产升级须保留 [v2 Compose 覆盖配置](V2_MIGRATION.md#compose-v2-覆盖文件)和原有身份、数据库及在线密钥。普通服务升级不自动改变用户信息披露范围；策略变化必须重新告知并取得两端各自的本机授权，Web 账户另行确认。
+现网签名策略为 `compliance`、epoch 3 长期策略、`allow_v1=false`，Relay 禁用；策略摘要和技术到期时间见[迁移指南](V2_MIGRATION.md)与[长期策略记录](../releases/V2_PERSISTENT_POLICY_2026-09-25.md)。签名字段不变时无需例行续签；模式、密钥、平台身份或其他签名字段变化时，用离线根签发更高 epoch，并先处理旧策略下未读或待发的 v2 消息。生产升级须保留 [v2 Compose 覆盖配置](V2_MIGRATION.md#compose-v2-覆盖文件)和原有身份、数据库及在线密钥。普通服务升级不自动改变用户信息披露范围；策略变化必须重新告知并取得两端各自的本机授权，Web 账户另行确认。
 
 Platform 管理后台的日常操作、权限和结果边界见[管理后台指南](PLATFORM_ADMIN.md)。管理台修改的存储、转发策略、历史保留天数，以及确认后保存的 Registry、MQ、Relay 运行参数均保存在 `platform_data` 卷中的 `/data/admin-policies.yaml`；升级与备份时须包含此文件。
 

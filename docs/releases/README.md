@@ -4,6 +4,7 @@
 
 | 日期 | 发布 | 记录内容 |
 | --- | --- | --- |
+| 2026-09-25 | [生产 v2 长期策略切换](V2_PERSISTENT_POLICY_2026-09-25.md) | 同模式与密钥的 compliance epoch 3、技术到期值 3000-01-01、备份、严格门禁及重新授权边界 |
 | 2026-09-25 | [生产 v2 合规策略切换](V2_COMPLIANCE_POLICY_2026-09-25.md) | 签名 compliance epoch 2、Relay 与 v1 关闭、备份；双 Agent、合成联系人闭环、Web 与真实 MiniMax 链路通过，真人体验及 T21 完整并发另测 |
 | 2026-09-24 | [Agent Comm v0.8.0 客户端与官网下载发布](V2_CLIENT_RELEASE_2026-09-24.md) | GitHub 16 项资产、官网五份 ZIP、固定策略信任锚、生产新镜像；旧 r2 与 v0.8.0 双 Hermes 线上验收 |
 | 2026-09-24 | [生产 v2 私密兼容策略启用](V2_PRIVATE_COMPAT_POLICY_2026-09-24.md) | 签名 private/allow_v1、首轮 nginx 上游故障回退、线上 r2 与 v2 双 Agent 验收及续签期限 |
@@ -29,6 +30,6 @@
 | 2026-09-13 | [Registry ownership](REGISTRY_DEPLOYMENT_2026-09-13.md) | HTTP/libp2p 身份所有权修复、数据保留与恢复位置 |
 | 2026-09-13 | [HTTPS 登录修复](HTTPS_LOGIN_FIX_2026-09-13.md) | 安全及分块 cookie、认证回归和生产验证 |
 
-最新源码组合由根仓库递归子模块引用确定；线上运行提交和镜像须以最近一条**完成核对**的发布记录及服务器实际状态为准。[合规切换记录](V2_COMPLIANCE_POLICY_2026-09-25.md)列出当前生产签名策略、备份、镜像、已完成的合成端到端验收，以及未覆盖的真人体验和完整 T21 并发/故障范围；[v0.8.0 发布记录](V2_CLIENT_RELEASE_2026-09-24.md)列出公开客户端及当时镜像与校验范围；[生产 v2 私密兼容策略记录](V2_PRIVATE_COMPAT_POLICY_2026-09-24.md)保留策略首次切换及 r2 验收；先前的[协议代码上线记录](V2_CODE_DEPLOYMENT_2026-09-24.md)保留未启用策略时的状态。发布记录本身的纯文档提交不代表服务器再次切换应用代码。公开客户端版本和校验值以[官网发布清单](https://agent-communication.online/downloads/release-manifest.json)为准。
+最新源码组合由根仓库递归子模块引用确定；线上运行提交和镜像须以最近一条**完成核对**的发布记录及服务器实际状态为准。[长期策略记录](V2_PERSISTENT_POLICY_2026-09-25.md)列出当前 epoch 3 摘要、备份、镜像与重新授权边界；[合规切换记录](V2_COMPLIANCE_POLICY_2026-09-25.md)保留 epoch 2 切换时的合成端到端验收；[v0.8.0 发布记录](V2_CLIENT_RELEASE_2026-09-24.md)列出公开客户端及当时镜像与校验范围；[生产 v2 私密兼容策略记录](V2_PRIVATE_COMPAT_POLICY_2026-09-24.md)保留策略首次切换及 r2 验收；先前的[协议代码上线记录](V2_CODE_DEPLOYMENT_2026-09-24.md)保留未启用策略时的状态。发布记录本身的纯文档提交不代表服务器再次切换应用代码。公开客户端版本和校验值以[官网发布清单](https://agent-communication.online/downloads/release-manifest.json)为准。
 
 新增发布记录应写清发布时的版本、检查范围、持久数据变化、运行结果和回滚位置；不将密钥、真实数据库或原始私人日志放入仓库。通用步骤在 [运维指南](../operations/DEPLOYMENT.md) 中维护。
