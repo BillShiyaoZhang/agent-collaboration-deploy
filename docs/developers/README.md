@@ -34,6 +34,7 @@ cd agent-collaboration-deploy
 ## 查实现和历史
 
 - [跨组件架构](../architecture/OVERVIEW.md)：谁持有身份、权限与数据；[产品决策](../architecture/DECISIONS.md)解释信任与授权边界。
+- 单 Platform 的 URN 首联同时涉及 SDK helper 的 Registry 身份验证与未确认握手、Python runtime 的好友申请/接受和消息门禁，以及 Web 的状态文案；改动时一起核对[SDK v2 协议](../../agent-comm-platform/agent-comm/docs/architecture/PROTOCOL_V2.md)和[当前架构](../architecture/OVERVIEW.md)。通讯录连接、现实身份判断、通信信任、协作授权和合规披露是不同状态。
 - [尚未实现的扩展方向](FUTURE_DIRECTIONS.md)：外部执行、代表权、关系事实与声誉的设计约束，不是现行功能承诺。
 - [发布记录](../releases/README.md)、[验证记录](../verification/README.md)：只证明相应日期和环境的结果。部署前核对实际提交、镜像和[公开下载清单](https://agent-communication.online/downloads/release-manifest.json)。
 - [文档维护规则](../maintenance/REPOSITORY_MAINTENANCE.md)：修复行为时同步更新该读者会查找的操作说明；不要把过时的阶段计划写成现行能力。

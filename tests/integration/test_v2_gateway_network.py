@@ -55,14 +55,11 @@ def main():
     platform_identity = run_cli(helper, "init", platform_keys)
     identities = {name: run_cli(helper, "init", folder / f"keys-{name}") for name in ("a", "b")}
     root_public_hex = (keys / "policy-root.public").read_bytes().hex()
-    for name, other in (("a", "b"), ("b", "a")):
+    for name in ("a", "b"):
         local_dir = folder / f"keys-{name}"
         run_cli(helper, "v2-pin-policy-root", local_dir, root_public_hex,
                 platform_identity["peer_id"],
                 "Independent deployment root and Platform PeerID checked in isolated process test")
-        run_cli(helper, "v2-pin-peer", local_dir, identities[other]["urn"],
-                identities[other]["ed25519_pubkey"],
-                "Peer full key compared over isolated local test channel")
 
     config = folder / "config.yaml"
     policy_file = folder / "policy.json"
@@ -133,9 +130,9 @@ api:
                                    if item["message_id"] == message_id), None),
                      message_id + " verified delivery", timeout=60)
 
-    def send(name, message_id, recipient, text):
+    def send(name, message_id, recipient, text, *, kind="task", conversation_id="v2-test"):
         body = {"message_id": message_id, "recipient_urn": identities[recipient]["urn"],
-                "text": text, "kind": "task", "conversation_id": "v2-test"}
+                "text": text, "kind": kind, "conversation_id": conversation_id}
         return until(lambda: request(urls[name], "/api/v2/mq/store", body),
                      message_id + " local acceptance", timeout=40)
 
@@ -227,6 +224,17 @@ api:
             raise AssertionError("new helper silently accepted v1 after a root pin")
         except urllib.error.HTTPError as error:
             assert error.code == 409 and json.load(error)["code"] == "upgrade_required"
+        friend_id = "friend-v2-first"
+        friend_packet = json.dumps({"protocol": "agent-comm-contacts/v1", "type": "request",
+                                    "request_id": friend_id}, separators=(",", ":"))
+        assert send("a", friend_id, "b", friend_packet, kind="contact.request",
+                    conversation_id=friend_id)["success"]
+        first_contact = receive("b", friend_id)
+        assert first_contact["sender_urn"] == identities["a"]["urn"]
+        assert first_contact["kind"] == "contact.request" and first_contact["text"] == friend_packet
+        request(urls["b"], "/api/v1/mq/ack", {"message_ids": [friend_id]})
+        checks.append("First friend request delivers using URNs without manual peer public-key pins")
+
         assert send("a", "v2-private", "b", "private body")["success"]
         private = receive("b", "v2-private")
         assert private["text"] == "private body" and private["mode"] == "private" and private["policy_epoch"] == 1

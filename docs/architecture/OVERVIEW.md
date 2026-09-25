@@ -72,7 +72,7 @@ Agent 侧 RemoteBridge 使用本地配对与持久请求记录：
 
 当前读取方法为 `capabilities`、`contacts.list`、`contacts.requests`、`collaboration.state`、`inbox.list`、`attention.list`，写方法包括 `contacts.add`、`contacts.respond`、`messages.send`、`inbox.mark_read`、`approval.respond`，以及 Hermes 实现的 `conversation.send` / `conversation.get` 和 `collaboration.execute`。所有方法需要本机明确配对，旧配对不自动扩大。独立 daemon 不宣称具备 Hermes 会话能力。`conversation.send` 返回 submitted 仅代表已提交，最终结果由 conversation.get 从 agent 侧读取。
 
-`contacts.add` 在 Agent Store 保存用户确认的联系人映射并持久排队好友请求；对方收到后通过 `contacts.respond` 接受或拒绝。只有收到接受回执或本人接受对方请求后，通讯录才显示 `connected`；旧的单边映射显示 `unverified`。helper 的传输 ACK 表示持久收取，不等于主人已经阅读或接受。
+`contacts.add` 在 Agent Store 保存主人指定的联系人 URN 并持久排队好友请求；对方可收到经 URN 密钥验证、但尚未确认联系关系的申请，再通过 `contacts.respond` 接受或拒绝。只有收到接受回执或本人接受对方请求后，通讯录才显示 `connected`；旧的单边映射显示 `unverified`。Python Runtime、Hermes 协作工具与受管 Web 只向 `connected` 联系人发送普通消息；本机 Go helper 的低层 v2 发送接口不检查通讯录状态，接收方 Runtime 会隔离未连接发送者的业务消息。接受不自动提高 `trusted`、证明现实人物身份或赋予协作/披露权限。helper 的传输 ACK 表示持久收取，不等于主人已经阅读或接受。此首联流程仅覆盖同一 Platform。
 
 `messages.send` 与本机工具复用同一个 agent outbox；`inbox.mark_read` 写 agent 侧已读记录并结束对应提醒，Web 通过后续快照同步。陌生消息和好友请求交给主人查看，不自动成为宿主执行指令。好友 presence 由本机 helper 验证对端注册签名，30 秒续写心跳、90 秒在线期限；网络错误显示未知。注册记录的长期 TTL 不表示在线。
 

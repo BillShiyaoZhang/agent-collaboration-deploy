@@ -10,7 +10,7 @@
 | 查询身份、安装或升级 helper、可靠收发消息、使用远程工作台或 Go SDK | [Agent Comm 总 skill](../../agent-comm-platform/agent-comm/SKILL.md)；英文版 [SKILL_EN.md](../../agent-comm-platform/agent-comm/SKILL_EN.md) |
 | 在 Hermes 主人对话中添加联系人、发消息、安排协作或处理待办 | 随 Hermes connector 安装的[个人协作 skill](../../agent-comm-platform/agent-comm/connectors/hermes-platform/hermes_platform_agent_comm/skills/personal-collaboration/SKILL.md) |
 | 使用 OpenClaw 收发基础消息 | [OpenClaw 连接器说明](../../agent-comm-platform/agent-comm/connectors/openclaw-channel/README.md)；先确认宿主确实接上了消息完成回调 |
-| 用户要在现网使用 v2 合规通信，或核对策略变化 | [用户合规通信与选择说明](../users/PRIVACY_MODE_UPGRADE.md)和[运维迁移步骤](../operations/V2_MIGRATION.md)；核对已验签策略、双方身份公钥，并分别询问两端主人是否对当前精确策略授权本机披露 |
+| 用户要在现网使用 v2 合规通信，或核对策略变化 | [用户合规通信与选择说明](../users/PRIVACY_MODE_UPGRADE.md)和[运维迁移步骤](../operations/V2_MIGRATION.md)；核对已验签策略、当前安装版本要求的对端身份公钥验证，并分别询问两端主人是否对当前精确策略授权本机披露 |
 
 **以实际安装版本和运行时发现结果为准。** SDK 中有函数，不代表当前宿主注册了同名工具；Web 页面有控件，也不代表 agent 的本机配对允许该方法。Hermes 中先调用 `agent_comm_collaboration` 的 `{"action":"describe"}` 查看 `actions`、`action_fields` 和端口；工作台先查询 agent 返回的 `capabilities`。
 
@@ -38,17 +38,19 @@ Windows 改用 `python`。状态为 `connected`、Gateway 已连通后，再让�
 
 ## 在 Hermes 中协作
 
-若本机 helper 支持 `/api/v2/disclosure`，在发送 Agent 间消息前读取其状态：分别看已验签策略的 `mode`、`policy_hash`、`gateway_key_id`、`platform_can_decrypt`、`local_compliance_authorized` 和 `v2_send_ready`。现网签名策略是 `compliance, allow_v1=false`，普通旧 v1 Agent 间通信会被拒；让双方先独立核对并固定策略根、Platform PeerID 和彼此完整身份公钥，再使用 v2 路径。向各自主人的确切说明：平台网关会在入队前解密哪些**新消息**，旧待发/未读消息如何隔离，拒绝授权后该路由将停止通信。等待每位主人针对显示的**精确策略摘要**分别决定本机授权；不要替主人执行 `v2-allow-compliance`、伪造核对说明，或把 Web 上看过告知当成本机许可。策略变更后必须重新核对，撤回许可只停止后续披露，不能收回已发送内容。没有 v2 能力的旧安装不因平台错误提示自动获得安全升级，须按实际安装包升级并独立固定信任根。
+若本机 helper 支持 `/api/v2/disclosure`，在发送 Agent 间消息前读取其状态：分别看已验签策略的 `mode`、`policy_hash`、`gateway_key_id`、`platform_can_decrypt`、`local_compliance_authorized` 和 `v2_send_ready`。现网签名策略是 `compliance, allow_v1=false`，普通旧 v1 Agent 间通信会被拒；双方先独立核对并固定策略根、Platform PeerID。**v0.8.0 仍须另行核对并固定彼此完整身份公钥**；v0.9.0 在同一 Platform 下可从准确 URN 自动解析、验签并缓存对应公钥。使用前核对实际安装版本与下载清单。不能把自动验钥说成已独立核实对方的现实身份。向各自主人的确切说明：平台网关会在入队前解密哪些**新消息**，旧待发/未读消息如何隔离，拒绝授权后该路由将停止通信。等待每位主人针对显示的**精确策略摘要**分别决定本机授权；不要替主人执行 `v2-allow-compliance`、伪造核对说明，或把 Web 上看过告知当成本机许可。策略变更后必须重新核对，撤回许可只停止后续披露，不能收回已发送内容。没有 v2 能力的旧安装不因平台错误提示自动获得安全升级，须按实际安装包升级并独立固定信任根。
 
 使用主人自己的 Hermes Desktop/Web 原生对话，或本机已配对且允许 `collaboration.execute` 的 Agent Comm Web 对话，调用 `agent_comm_collaboration`。开始或恢复一项工作时，先读 `describe`、`state`，再按需读 `inbox` 和 `attention`。未注册的可选能力会返回 `unsupported`；联系人名称、记忆候选和对端消息都需要与已确认的身份和当前授权分开处理。
 
 | 用户要做的事 | 动作顺序与完成标志 |
 | --- | --- |
 | “给我一段让别人加我的文案” | `export_contact`，返回结果中的 `text`。本人的公网 platform 地址取自已配置的可信值或用户给出的实际地址；好友还需已确认的 `contact_id` 和该好友的实际 platform 地址。[总 skill](../../agent-comm-platform/agent-comm/SKILL.md#export-contact)列出边界。 |
-| 添加或回应好友 | 核对明确 URN；`prepare_contact` → 主人 `confirm`。收到请求时用 `contact_requests` → `prepare_contact_response` → `confirm`。本地请求入队后仍是 `pending`，直到对方接受才是 `connected`。 |
-| 发送普通消息 | 先确认收件人，再 `prepare_message`（正文和可复用的 `message_id`）→ `confirm`。通过 `inbox` 读来信，处理后以 `mark_read` 同步已读。 |
+| 添加或回应好友 | 从主人认可的渠道取得准确 URN；`prepare_contact` → 主人 `confirm`。未知 URN 的申请可先作为待处理请求呈现；收到请求时用 `contact_requests` → `prepare_contact_response` → `confirm` 接受或拒绝。本地请求入队后仍是 `pending`，直到对方接受才是 `connected`。接受只建立通讯关系，不提高 `trusted` 或协作授权。 |
+| 发送普通消息 | 先确认收件人已是 `connected` 联系人，再 `prepare_message`（正文和可复用的 `message_id`）→ `confirm`。通过 `inbox` 读来信，处理后以 `mark_read` 同步已读。 |
 | 交换资料、候选时间或会议提议 | 登记有限资料快照；`prepare_task` 给出具体对象、范围、期限和次数；`prepare_action` 给出确切动作。返回 `allow` 时以原 `operation_id` 执行 `dispatch`；返回 `ask` 时由主人回答 `confirm`，之后继续。收到提议先从已保存的 `inbox` 用 `message_id` 导入，再决定是否接受。 |
 | 恢复未完成事项 | 重新读 `state`、`attention` 和当前审批。待办提醒、先前回答或对端消息都不能代替对当前动作的授权。 |
+
+表中的 `connected` 发件门禁由 Python Runtime、Hermes 协作工具与已配对的 Web 操作执行。本机 Go helper 的低层 `POST /api/v2/mq/store` 验证 URN、公钥、Registry 与策略，但不读取 Runtime 通讯录；直接调用该接口不能据此声称已获好友接受或业务授权。接收方 Runtime 会持久隔离未连接发送者的业务消息并 ACK，已知 `pending` 联系人的乱序消息在接受回执后才进入可见收件。
 
 精确参数、scope 字段、双边协作与有限后台会议程序由[个人协作 skill](../../agent-comm-platform/agent-comm/connectors/hermes-platform/hermes_platform_agent_comm/skills/personal-collaboration/SKILL.md)规定。示例日期要换成当前任务的实际日期、时区和时间。会议协作可形成双方接受并同步的约定，目前不自动创建日历事件。
 
