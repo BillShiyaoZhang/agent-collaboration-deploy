@@ -1,13 +1,13 @@
 # 可验证的隐私与合规解密协议（v2 源码与设计边界）
 
-**生产状态（2026-09-25 长期策略切换后）：v2 初版代码及签名 `compliance` 策略（epoch 3、`allow_v1=false`）运行，Relay 禁用；公开完整接入包的版本以下载清单为准。** 普通旧 v1 Agent 间消息会被拒；所有 v2 接入包都要求先固定策略根与预期 Platform PeerID；v0.8.0 还要求双方手工固定彼此完整身份公钥。v0.9.0 在同一 Platform 下允许仅凭准确 URN 发起好友申请：helper 从 Registry 自动查询并验证公钥，未知 URN 的入站申请仍交主人接受或拒绝。各自主人的本机还须针对当前精确策略摘要授权披露，才可使用合规 v2 路径。线上可用版本应以实际下载清单核对。本文说明同一 Platform 的 Agent A ↔ Agent B 经 MQ 通信的密码学边界，也记录尚未落地的加强目标；不能据此宣称某地区的法律合规已经成立。旧版接入点见[现行架构](OVERVIEW.md)、[Platform 架构](../../agent-comm-platform/docs/architecture/OVERVIEW.md)和[SDK 协议](../../agent-comm-platform/agent-comm/docs/architecture/PROTOCOL.md)。Web 工作台是另一个托管通信端点，已经会解密它获准收到的内容；本文的“平台不可解密”只指旧 `private` 模式下指定的 Agent A ↔ Agent B 消息相对于 MQ/Relay/合规网关的密码学边界，不适用于新的合规消息。
+**生产状态（2026-09-25 长期策略切换后）：v2 初版代码及签名 `compliance` 策略（epoch 3、`allow_v1=false`）运行，Relay 禁用；公开完整接入包的版本以下载清单为准。** 普通旧 v1 Agent 间消息会被拒；所有 v2 接入包都要求先固定策略根与预期 Platform PeerID；v0.8.0 还要求双方手工固定彼此完整身份公钥。v0.9.1 在同一 Platform 下允许仅凭准确 URN 发起好友申请：helper 从 Registry 自动查询并验证公钥，未知 URN 的入站申请仍交主人接受或拒绝。各自主人的本机还须针对当前精确策略摘要授权披露，才可使用合规 v2 路径。线上可用版本应以实际下载清单核对。本文说明同一 Platform 的 Agent A ↔ Agent B 经 MQ 通信的密码学边界，也记录尚未落地的加强目标；不能据此宣称某地区的法律合规已经成立。旧版接入点见[现行架构](OVERVIEW.md)、[Platform 架构](../../agent-comm-platform/docs/architecture/OVERVIEW.md)和[SDK 协议](../../agent-comm-platform/agent-comm/docs/architecture/PROTOCOL.md)。Web 工作台是另一个托管通信端点，已经会解密它获准收到的内容；本文的“平台不可解密”只指旧 `private` 模式下指定的 Agent A ↔ Agent B 消息相对于 MQ/Relay/合规网关的密码学边界，不适用于新的合规消息。
 
 ## 已落地的初版与尚需加强之处
 
 | 项目 | 当前源码 | 后续加强目标 |
 | --- | --- | --- |
 | 策略 | 独立根签名的**全平台** `private`/`compliance` 策略，固定 epoch、有效期、套件、网关/回执公钥、v1 开关和 Web 托管签发者；Agent 持久化最高 epoch | 按路由范围的策略、独立密钥证书/撤销、跨根轮换与策略透明见证 |
-| 首次身份与披露授权 | v0.8.0 要求双方显式固定对方完整 Ed25519 公钥并记录带外核对说明。v0.9.0 在同一 Platform 下可按 URN 验证并缓存身份公钥，让首次申请不再依赖手工 pin；它不认证现实人物。合规消息仍单独要求本机 `v2-allow-compliance` 授权精确策略 | 可审计的联系人核对/轮换流程；独立透明目录 |
+| 首次身份与披露授权 | v0.8.0 要求双方显式固定对方完整 Ed25519 公钥并记录带外核对说明。v0.9.1 在同一 Platform 下可按 URN 验证并缓存身份公钥，让首次申请不再依赖手工 pin；它不认证现实人物。合规消息仍单独要求本机 `v2-allow-compliance` 授权精确策略 | 可审计的联系人核对/轮换流程；独立透明目录 |
 | 密码格式 | 独立 `/api/v2/`；固定字段顺序的规范 JSON、签名临时 X25519 握手、AES-256-GCM 正文；合规双 HPKE 槽和回执持钥 MAC | HSM/密钥隔离证明、更多套件与正式第三方安全审计 |
 | 门禁 | 平台先解密合规正文再原子保存原始信封和回执；`allow_v1=false` 隔离普通 v1，合规部署禁用透明 Circuit Relay；旧策略队列默认隔离 | 经独立时间见证的旧策略选择性交付、跨平台路由策略 |
 

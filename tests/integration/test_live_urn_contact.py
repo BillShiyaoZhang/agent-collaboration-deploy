@@ -78,7 +78,7 @@ def main():
         identities = {name: helper_cli(helper, "init", keys[name]) for name in keys}
         for name in keys:
             helper_cli(helper, "v2-pin-policy-root", keys[name], trust["policy_root_public_key_hex"],
-                       trust["platform_peer_id"], "Previously verified public v0.9.0 release trust anchor")
+                       trust["platform_peer_id"], "Previously verified public v0.9.1 release trust anchor")
 
         def start(name):
             log = (folder / f"helper-{name}.log").open("ab")

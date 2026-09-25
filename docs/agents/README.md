@@ -38,7 +38,7 @@ Windows 改用 `python`。状态为 `connected`、Gateway 已连通后，再让�
 
 ## 在 Hermes 中协作
 
-若本机 helper 支持 `/api/v2/disclosure`，在发送 Agent 间消息前读取其状态：分别看已验签策略的 `mode`、`policy_hash`、`gateway_key_id`、`platform_can_decrypt`、`local_compliance_authorized` 和 `v2_send_ready`。现网签名策略是 `compliance, allow_v1=false`，普通旧 v1 Agent 间通信会被拒；双方先独立核对并固定策略根、Platform PeerID。**v0.8.0 仍须另行核对并固定彼此完整身份公钥**；v0.9.0 在同一 Platform 下可从准确 URN 自动解析、验签并缓存对应公钥。使用前核对实际安装版本与下载清单。不能把自动验钥说成已独立核实对方的现实身份。向各自主人的确切说明：平台网关会在入队前解密哪些**新消息**，旧待发/未读消息如何隔离，拒绝授权后该路由将停止通信。等待每位主人针对显示的**精确策略摘要**分别决定本机授权；不要替主人执行 `v2-allow-compliance`、伪造核对说明，或把 Web 上看过告知当成本机许可。策略变更后必须重新核对，撤回许可只停止后续披露，不能收回已发送内容。没有 v2 能力的旧安装不因平台错误提示自动获得安全升级，须按实际安装包升级并独立固定信任根。
+若本机 helper 支持 `/api/v2/disclosure`，在发送 Agent 间消息前读取其状态：分别看已验签策略的 `mode`、`policy_hash`、`gateway_key_id`、`platform_can_decrypt`、`local_compliance_authorized` 和 `v2_send_ready`。现网签名策略是 `compliance, allow_v1=false`，普通旧 v1 Agent 间通信会被拒；双方先独立核对并固定策略根、Platform PeerID。**v0.8.0 仍须另行核对并固定彼此完整身份公钥**；v0.9.1 在同一 Platform 下可从准确 URN 自动解析、验签并缓存对应公钥。使用前核对实际安装版本与下载清单。不能把自动验钥说成已独立核实对方的现实身份。向各自主人的确切说明：平台网关会在入队前解密哪些**新消息**，旧待发/未读消息如何隔离，拒绝授权后该路由将停止通信。等待每位主人针对显示的**精确策略摘要**分别决定本机授权；不要替主人执行 `v2-allow-compliance`、伪造核对说明，或把 Web 上看过告知当成本机许可。策略变更后必须重新核对，撤回许可只停止后续披露，不能收回已发送内容。没有 v2 能力的旧安装不因平台错误提示自动获得安全升级，须按实际安装包升级并独立固定信任根。
 
 使用主人自己的 Hermes Desktop/Web 原生对话，或本机已配对且允许 `collaboration.execute` 的 Agent Comm Web 对话，调用 `agent_comm_collaboration`。开始或恢复一项工作时，先读 `describe`、`state`，再按需读 `inbox` 和 `attention`。未注册的可选能力会返回 `unsupported`；联系人名称、记忆候选和对端消息都需要与已确认的身份和当前授权分开处理。
 
