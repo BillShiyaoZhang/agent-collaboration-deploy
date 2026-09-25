@@ -4,6 +4,7 @@
 
 | 日期 | 发布 | 记录内容 |
 | --- | --- | --- |
+| 2026-09-25 | [Agent Comm v0.9.1 仅凭 URN 首联](URN_FIRST_CONTACT_RELEASE_2026-09-25.md) | GitHub 16 项资产、官网五份 ZIP、新生产镜像与备份；官网正式包的合成双 Agent 验收通过 |
 | 2026-09-25 | [Platform Relay 配置故障恢复](PLATFORM_RELAY_RECOVERY_2026-09-25.md) | 合规策略与 Relay 冲突导致重启循环；备份单项回退、健康与身份验证，生产镜像未变 |
 | 2026-09-25 | [生产 v2 长期策略切换](V2_PERSISTENT_POLICY_2026-09-25.md) | 同模式与密钥的 compliance epoch 3、技术到期值 3000-01-01、备份、严格门禁及重新授权边界 |
 | 2026-09-25 | [生产 v2 合规策略切换](V2_COMPLIANCE_POLICY_2026-09-25.md) | 签名 compliance epoch 2、Relay 与 v1 关闭、备份；双 Agent、合成联系人闭环、Web 与真实 MiniMax 链路通过，真人体验及 T21 完整并发另测 |
