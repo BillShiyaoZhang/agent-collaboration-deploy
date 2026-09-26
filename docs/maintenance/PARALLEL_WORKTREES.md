@@ -21,7 +21,7 @@ git merge --no-ff codex/documentation-task
 git push -u origin codex/integrate-YYYYMMDD
 ```
 
-SDK 默认分支是 `master`，其余三个仓库是 `main`，实际命令应按仓库调整。每个子模块本身都是独立仓库；只提交 Deploy 无法保存 SDK 中的源码修改。
+当前四个仓库默认分支为 `main`；操作前仍以 `origin/HEAD` 和远端实际分支为准。每个子模块本身都是独立仓库；只提交 Deploy 无法保存 SDK 中的源码修改。
 
 ## 任务交接约定
 

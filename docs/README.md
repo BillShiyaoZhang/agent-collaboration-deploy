@@ -14,6 +14,7 @@
 | 工作 | 参考资料 |
 | --- | --- |
 | 理解现行组件职责、授权和数据流 | [跨组件架构](architecture/OVERVIEW.md) · [产品决策](architecture/DECISIONS.md) · [双边协作与提醒](architecture/COLLABORATION_AND_ATTENTION.md) |
+| 评审 Web 的聊天与协作体验 | [Web 产品设计提案](design/WEB_CHAT_AND_COLLABORATION.md)：Persona、storyboard、功能设计与 Mermaid 图；尚未实现 |
 | 自行部署、管理 Platform、接入已有 Hermes | [部署与升级](operations/DEPLOYMENT.md) · [Platform 管理后台](operations/PLATFORM_ADMIN.md) · [Hermes 源码接入](operations/HERMES.md) · [完整接入包](../tools/release/early_access/README.md) |
 | 验证跨组件行为 | [2026-09-25 T21 补测结果](verification/T21_STABILITY_2026-09-25.md) · [2026-09-24 变更后复测方案](testing/RETEST_PLAN_2026-09-24.md) · [测试分层与原则](testing/TEST_STRATEGY.md) · [双 Agent 人在环验收](testing/TWO_AGENT_HITL_RUNBOOK.md) · [T00～T12 步骤](testing/TEST_EXECUTION_GUIDE.md) · [T13～T21 步骤](testing/ADDITIONAL_CASES_2026-09-24.md) |
 | 维护仓库及发布产物 | [仓库维护](maintenance/REPOSITORY_MAINTENANCE.md) · [发布工具](../tools/release/README.md) |
