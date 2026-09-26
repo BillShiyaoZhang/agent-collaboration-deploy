@@ -4,6 +4,7 @@
 
 | 日期 | 发布 | 记录内容 |
 | --- | --- | --- |
+| 2026-09-26 | [Web 单体应用与交互信息收纳](WEB_UNIFIED_APP_RELEASE_2026-09-26.md) | 官网、文档和工作台统一 Next.js；Web/nginx 切换、原 46 用户/43 连接及四库保留；公网匿名 32 项、双账号认证读取 29 项通过，备份与耦合回滚 |
 | 2026-09-26 | [Agent Comm v0.9.2 完整协作审批卡与官网接入包](AGENT_COMM_V092_RELEASE_2026-09-26.md) | GitHub 16 项正式资产、官网五份 ZIP、服务器源码快进与 nginx-only 切换；Web/Platform 容器不变，两套合成 Hermes 的正式包原位升级及 T06 双分支通过 |
 | 2026-09-25 | [Agent Comm v0.9.1 仅凭 URN 首联](URN_FIRST_CONTACT_RELEASE_2026-09-25.md) | GitHub 16 项资产、官网五份 ZIP、新生产镜像与备份；官网正式包的合成双 Agent 验收通过 |
 | 2026-09-25 | [Platform Relay 配置故障恢复](PLATFORM_RELAY_RECOVERY_2026-09-25.md) | 合规策略与 Relay 冲突导致重启循环；备份单项回退、健康与身份验证，生产镜像未变 |
