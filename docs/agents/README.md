@@ -14,6 +14,10 @@
 
 **以实际安装版本和运行时发现结果为准。** SDK 中有函数，不代表当前宿主注册了同名工具；Web 页面有控件，也不代表 agent 的本机配对允许该方法。Hermes 中先调用 `agent_comm_collaboration` 的 `{"action":"describe"}` 查看 `actions`、`action_fields` 和端口；工作台先查询 agent 返回的 `capabilities`。
 
+## 账户邮件与人工客服
+
+注册验证、找回或修改密码的邮件确认由账户主人在其邮箱与网页完成；不要替主人收集密码、一次性链接或自动点击确认。遇到登录问题先按[账户邮箱指南](../users/ACCOUNT_EMAIL.md)说明步骤，保留原身份和配对；人工邮箱未开通时不要宣称 `support@agent-communication.online` 能收信；需要帮助时让用户使用页面实际开放的联系入口，未经授权不要替用户发送邮件。部署开通见[邮件运维指南](../operations/EMAIL.md)，本机 SDK 安装和升级不需要腾讯密码或 Resend 密钥。
+
 ## 首次接入 Hermes
 
 用户交给你官网地址并要求接入时，自己按[官网当前安装指南](https://agent-communication.online/agent-install.md)获取与操作系统匹配的**完整接入包**，对照发布清单校验文件大小和 SHA-256，再从解压后的包运行：

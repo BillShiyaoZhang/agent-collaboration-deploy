@@ -22,6 +22,8 @@ cd agent-collaboration-deploy
 
 已有检出缺少子模块时运行 `git submodule update --init --recursive`。不要用 `git submodule update --remote` 代替固定版本；它会选择另一组提交。目录边界和提交顺序见[仓库维护](../maintenance/REPOSITORY_MAINTENANCE.md)。
 
+账户邮件的发送、token 生命周期、会话失效与用户页面归 Web；人工邮箱开通、DNS、Compose 和 nginx 归根部署仓库。[邮件运维指南](../operations/EMAIL.md)说明腾讯 support 人工收发与 Resend notify 事务发信、额度及真实验收；修改功能时同步[用户账户指南](../users/ACCOUNT_EMAIL.md)与 Web 技术参考。
+
 ## 从哪一层验证
 
 1. **文档与目录：** `python tools/maintenance/check_structure.py` 检查四仓 Markdown 文件链接及边界。

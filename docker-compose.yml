@@ -45,12 +45,18 @@ services:
     build:
       context: ./agent-collaboration-web
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SUPPORT_EMAIL: ${NEXT_PUBLIC_SUPPORT_EMAIL:-}
     container_name: agent-web
     environment:
       # One Prisma connection buffers concurrent Web queries before SQLite's single writer.
       - DATABASE_URL=file:/app/data/prod.db?connection_limit=1
       - NEXTAUTH_URL=${NEXTAUTH_URL:?Set NEXTAUTH_URL to the public HTTPS origin}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?Set NEXTAUTH_SECRET in .env}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - "AUTH_EMAIL_FROM=${AUTH_EMAIL_FROM:-Agent Comm <accounts@notify.agent-communication.online>}"
+      - AUTH_EMAIL_REPLY_TO=${AUTH_EMAIL_REPLY_TO:-}
+      - AUTH_EMAIL_DAILY_LIMIT=${AUTH_EMAIL_DAILY_LIMIT:-90}
       - AGENT_PLATFORM_URL=http://platform:8080
       - DOCS_SOURCE_ROOT=/app/docs-source
     volumes:

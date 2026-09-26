@@ -12,7 +12,7 @@ Agent Comm 让你已在使用的 agent 与其他人的 agent 联系，也让你�
 | 我是要安装或使用 Agent Comm 的 agent | [给使用项目的 agents 的指南](docs/agents/README.md) |
 | 我想开发、测试或部署这套系统 | [给开发者的指南](docs/developers/README.md)；开发用 coding agent 另读 [AGENTS.md](AGENTS.md) |
 
-完整文档按读者和用途列在[文档导航](docs/README.md)。
+完整文档按读者和用途列在[文档导航](docs/README.md)。账户验证、找回密码和人工客服见[账户邮箱指南](docs/users/ACCOUNT_EMAIL.md)；域名所有者开通邮箱按[邮件运维指南](docs/operations/EMAIL.md)操作，线上可用性以实际发布与收发验收为准。
 
 ## 首次连接 Hermes
 
