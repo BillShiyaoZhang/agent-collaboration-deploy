@@ -33,7 +33,7 @@ cd agent-collaboration-deploy
 
 ## 查实现和历史
 
-产品设计提案：[Web 聊天与 agent 协作设计](../design/WEB_CHAT_AND_COLLABORATION.md)从 Persona、storyboard 推导功能与状态；仅供设计评审，不是现行功能或发布承诺。
+产品设计提案：[Web 聊天与 agent 协作设计](../design/WEB_CHAT_AND_COLLABORATION.md)从 Persona、storyboard 推导功能与状态；设计基线与后续方向不等于全部现行能力；已实现 P0/P1 的范围和云端验收见[发布记录](../releases/WEB_CHAT_COLLABORATION_RELEASE_2026-09-26.md)。
 
 - [跨组件架构](../architecture/OVERVIEW.md)：谁持有身份、权限与数据；[产品决策](../architecture/DECISIONS.md)解释信任与授权边界。
 - 单 Platform 的 URN 首联同时涉及 SDK helper 的 Registry 身份验证与未确认握手、Python runtime 的好友申请/接受和消息门禁，以及 Web 的状态文案；改动时一起核对[SDK v2 协议](../../agent-comm-platform/agent-comm/docs/architecture/PROTOCOL_V2.md)和[当前架构](../architecture/OVERVIEW.md)。通讯录连接、现实身份判断、通信信任、协作授权和合规披露是不同状态。
