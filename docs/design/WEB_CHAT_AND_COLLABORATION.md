@@ -1,6 +1,6 @@
 # Web 产品设计：和自己的 agent 聊天，委托它与其它 agents 合作
 
-> 状态：2026-09-26 的设计基线。后续 P0/P1 已实现与部署，范围和验证见[发布记录](../releases/WEB_CHAT_COLLABORATION_RELEASE_2026-09-26.md)；P2 仍为设计方向。
+> 状态：2026-09-26 的设计基线。后续 P0/P1 已实现与部署，范围和验证见[发布记录](../releases/WEB_CHAT_COLLABORATION_RELEASE_2026-09-26.md)；电脑优先布局与独立管理页的后续修订已上线，见[桌面发布记录](../releases/WEB_DESKTOP_WORKSPACE_RELEASE_2026-09-26.md)；P2 仍为设计方向。
 >
 > 本文保留最初设计阶段的 Persona、storyboard、功能推导与当时现状，不作为全部功能已实现的声明。Persona、痛点与效果目标仍需真人使用验证；现状分析针对设计前固定版本。
 
