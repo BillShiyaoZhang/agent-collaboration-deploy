@@ -9,7 +9,6 @@ services:
     volumes:
       - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./deploy/nginx/docs-source.conf:/etc/nginx/docs-source.conf:ro
-      - ./agent-collaboration-web/site:/srv/site:ro
       # Serve reviewed paths directly from the four repositories' docs/ trees.
       - ./docs:/srv/docs/deploy:ro
       - ./agent-collaboration-web/docs:/srv/docs/web:ro
@@ -53,8 +52,14 @@ services:
       - NEXTAUTH_URL=${NEXTAUTH_URL:?Set NEXTAUTH_URL to the public HTTPS origin}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?Set NEXTAUTH_SECRET in .env}
       - AGENT_PLATFORM_URL=http://platform:8080
+      - DOCS_SOURCE_ROOT=/app/docs-source
     volumes:
       - web_data:/app/data
+      # Expose reviewed Markdown to the Web app's document reader and direct source routes.
+      - ./docs:/app/docs-source/deploy:ro
+      - ./agent-collaboration-web/docs:/app/docs-source/web:ro
+      - ./agent-comm-platform/docs:/app/docs-source/platform:ro
+      - ./agent-comm-platform/agent-comm/docs:/app/docs-source/sdk:ro
     networks:
       - agent-net
     restart: unless-stopped

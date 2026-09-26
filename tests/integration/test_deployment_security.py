@@ -149,7 +149,6 @@ class DeploymentSecurity(unittest.TestCase):
             result = docker("run", "--rm", "-d", "-p", "127.0.0.1::8080", "-p", "127.0.0.1::8081",
                             "--mount", f"type=bind,source={config_path},target=/etc/nginx/nginx.conf,readonly",
                             "--mount", f"type=bind,source={ROOT / 'deploy/nginx/docs-source.conf'},target=/etc/nginx/docs-source.conf,readonly",
-                            "--mount", f"type=bind,source={ROOT / 'agent-collaboration-web/site'},target=/srv/site,readonly",
                             "--mount", f"type=bind,source={ROOT / 'docs'},target=/srv/docs/deploy,readonly",
                             "--mount", f"type=bind,source={ROOT / 'agent-collaboration-web/docs'},target=/srv/docs/web,readonly",
                             "--mount", f"type=bind,source={ROOT / 'agent-comm-platform/docs'},target=/srv/docs/platform,readonly",
@@ -188,6 +187,9 @@ class DeploymentSecurity(unittest.TestCase):
                 self.assertEqual(v2_status, 200)
                 self.assertEqual(v2_forwarded, forwarded)
                 self.assertEqual(request("/api/auth/csrf"), (200, "web-upstream"))
+                self.assertEqual(request("/"), (200, "web-upstream"))
+                self.assertEqual(request("/docs/"), (200, "web-upstream"))
+                self.assertEqual(request("/docs/?path=deploy/README.md"), (200, "web-upstream"))
                 self.assertEqual(request("/api/auth/register", b"x" * 16385)[0], 413)
                 self.assertEqual(request("/api/agents", b"x" * (1024 * 1024 + 1))[0], 413)
                 statuses = [request("/api/auth/" + ("register/" if index % 2 else "callback/credentials"),
@@ -196,7 +198,7 @@ class DeploymentSecurity(unittest.TestCase):
                 self.assertEqual(statuses[-1], 429, statuses)
                 self.assertEqual(request("/api/auth/callback/credentials/extra", b"{}")[0], 429)
                 self.assertEqual(request("/api/auth/csrf")[0], 200)
-                for path in ("/docs/", "/docs/source/deploy/README.md",
+                for path in ("/docs/source/deploy/README.md",
                              "/docs/source/deploy/users/PRIVACY_MODE_UPGRADE.md",
                              "/docs/source/platform/guides/API.md"):
                     self.assertEqual(request(path)[0], 200, path)

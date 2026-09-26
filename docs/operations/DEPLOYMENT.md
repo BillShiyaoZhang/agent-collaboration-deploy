@@ -15,15 +15,15 @@
 | Compose | [`docker-compose.yml`](../../docker-compose.yml) |
 | nginx | [`deploy/nginx/nginx.conf`](../../deploy/nginx/nginx.conf) 和 [`docs-source.conf`](../../deploy/nginx/docs-source.conf) → `/etc/nginx/` |
 | Platform 配置 | [`deploy/platform/config.yaml`](../../deploy/platform/config.yaml) → `/etc/platform/config.yaml` |
-| 官网 | [`agent-collaboration-web/site/`](../../agent-collaboration-web/site/README.md) → `/srv/site` |
-| 官网文档 | 四仓各自的 `docs/` → `/srv/docs/{deploy,web,platform,sdk}`，只读挂载原文件 |
+| Web 公共页面与工作台 | [`agent-collaboration-web/src/app/`](../../agent-collaboration-web/src/app/page.tsx) → 同一个 Next.js Web 镜像 |
+| 官网文档原文 | 四仓各自的 `docs/` → nginx 的 `/srv/docs/{deploy,web,platform,sdk}` 与 Web 的 `/app/docs-source/{deploy,web,platform,sdk}`，均只读挂载原文件 |
 | 公开安装包 | 根目录 `downloads/` → `/srv/downloads`，由发布流程准备 |
 | ACME 验证 | 根目录 `acme-challenge/` → `/var/www/certbot` |
 | 持久数据 | Compose 的 `platform_data`、`web_data` 命名卷 |
 
 现有配置使用 `agent-communication.online`、`www.agent-communication.online` 与 `8.130.40.38`。部署到其他服务器时，同步修改 nginx 的域名/证书路径、Platform 的外部地址及 `.env` 中的 `NEXTAUTH_URL`。
 
-nginx 将 `/` 和 `/docs/` 交给官网静态目录；`/docs/source/{deploy,web,platform,sdk}/...` 从对应仓库的 `docs/` 直接读取 Markdown。源文件 URL 保留仓库名和相对路径，不需同步第二份文档。文档路由只允许现行的角色、架构、运维和指南 Markdown；发布、验证、测试历史记录继续在仓库中查阅。[Platform API 参考](https://agent-communication.online/docs/?path=platform/guides/API.md)同样由此阅读器打开；旧 `/docs/api/` 和 `/guide/` 地址重定向到新入口。`/healthz`、`/api/v1/`、`/api/v2/`、`/admin` 交给 Platform。其余路径，包括 `/api/auth/`，交给 Web。只修改已挂载官网的静态内容或已公开的 Markdown 时无需重建应用，详见 [官网维护说明](../../agent-collaboration-web/site/README.md)。
+nginx 将 `/`、`/docs/`、登录与工作台交给同一个 Next.js Web 应用；`/docs/source/{deploy,web,platform,sdk}/...` 仍从对应仓库的 `docs/` 直接读取 Markdown。Web 应用也提供同路径的只读入口，供不经过 nginx 的本地运行使用。源文件 URL 保留仓库名和相对路径，不需同步第二份文档；两个入口都只允许现行的角色、架构、运维和指南 Markdown，发布、验证、测试历史记录继续在仓库中查阅。[Platform API 参考](https://agent-communication.online/docs/?path=platform/guides/API.md)由同一阅读器打开；旧 `/docs/api/` 和 `/guide/` 地址重定向到新入口。`/healthz`、`/api/v1/`、`/api/v2/`、`/admin` 交给 Platform，其余路径包括 `/api/auth/` 交给 Web。修改公共页面需重建 Web 镜像；只修改已挂载的公开 Markdown 原文无需重建应用。完整文档入口需要本 Compose 中四仓的只读文档挂载，详见 [Web 部署说明](../../agent-collaboration-web/docs/operations/DEPLOYMENT.md)。
 
 ## 准备源码与环境
 
@@ -137,11 +137,15 @@ docker exec agent-nginx nginx -s reload
 
 nginx 使用静态解析的 Compose 上游地址。Platform 或 Web 容器重建后，旧上游 IP 可能仍留在运行中的 nginx 配置；先执行 `nginx -t` 并 reload，再从公网检查 HTTPS 健康和业务 API。2026-09-24 首次 v2 切换就因遗漏 reload 导致健康检查失败而自动回退；补上 reload 后重新切换成功。仅重载 nginx 不会重新装入新增的 Compose 挂载，挂载变化仍须按下文重建 nginx 容器。
 
-四仓文档以只读挂载由 nginx 用户读取。若发布 shell 使用 `umask 077`，新检出的 Markdown 可能是 `0600`，导致 `/docs/` 阅读器获取源码时返回 403。更新源码后检查并修复公开文档的读取权限，再对实际路由做 HTTP 验证：
+四仓文档以只读方式挂载给 nginx 和 Web。若发布 shell 使用 `umask 077`，新检出的目录可能是 `0700`、Markdown 可能是 `0600`；nginx 用户或 Web 的 `nextjs` 用户会无法读取，文档原文可能返回 403 或 404。更新源码后，仅修复这四个公开文档目录树的目录遍历和 Markdown 读取权限，再以实际容器用户打开文件并验证 HTTP 路由：
 
 ```bash
 find docs agent-collaboration-web/docs agent-comm-platform/docs agent-comm-platform/agent-comm/docs \
+  -type d -exec chmod a+rx {} +
+find docs agent-collaboration-web/docs agent-comm-platform/docs agent-comm-platform/agent-comm/docs \
   -type f -name '*.md' -exec chmod a+r {} +
+docker exec --user nginx agent-nginx sh -c 'cat /srv/docs/deploy/users/README.md /srv/docs/web/README.md /srv/docs/platform/guides/API.md /srv/docs/sdk/README.md >/dev/null'
+docker exec --user nextjs agent-web sh -c 'cat /app/docs-source/deploy/users/README.md /app/docs-source/web/README.md /app/docs-source/platform/guides/API.md /app/docs-source/sdk/README.md >/dev/null'
 curl -fsS https://agent-communication.online/docs/source/deploy/operations/PLATFORM_ADMIN.md >/dev/null
 curl -fsS https://agent-communication.online/docs/source/platform/guides/API.md >/dev/null
 ```
@@ -153,6 +157,8 @@ curl -fsS https://agent-communication.online/docs/source/platform/guides/API.md 
 若采用文件清单而非完整仓库部署，需同时复制 `deploy/` 下的 nginx 配置及 `docs-source.conf`、Platform 配置、与之匹配的 Compose 文件，以及四仓在对应固定提交的 `docs/` 原文件；启动前检查容器挂载路径。公开目录不能用缺失的目录挂载占位，否则官网文档会静默变成空目录。
 
 升级后复查健康、身份、数据完整性、同步启动和登录。回退应用时恢复对应源码/配置及旧镜像，保留实时数据库；旧备份覆盖实时库会丢失升级后的用户写入和同步结果。具体镜像、备份目录和历史回退步骤见各次发布记录。
+
+本次官网与文档页面迁入 Next.js 后，回滚到迁移前版本必须一起恢复旧 Web 镜像、旧 nginx 配置，以及旧 Compose 中 `agent-collaboration-web/site` 到 `/srv/site` 的只读挂载和对应 HTML 文件，再重建 Web 与 nginx 容器。只回退 Web 镜像会让新 nginx 把 `/`、`/docs/` 交给不含这些公开页面的旧应用；只 reload nginx 也不会恢复已移除的 `/srv/site` 挂载。回滚仍保留原有数据卷、`NEXTAUTH_SECRET` 与 v2 覆盖配置，随后检查首页、文档、登录、工作台和现有身份。
 
 ## 证书续期
 
