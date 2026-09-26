@@ -115,6 +115,15 @@ NEXT_PUBLIC_SUPPORT_EMAIL=""
 
 `NEXTAUTH_URL` 必须为真实 HTTPS Origin `https://agent-communication.online`，账户链接从服务端该值生成，不从用户提交的 Host 生成。邮件服务需要到 `https://api.resend.com` 的 HTTPS 出站连接。`AUTH_EMAIL_REPLY_TO` 可空，控制事务信回复地址；`NEXT_PUBLIC_SUPPORT_EMAIL` 是可选的公开网站客服地址，默认空即隐藏入口。该值在构建时写入浏览器代码，只能放公开邮箱，不能放密钥。人工邮箱未开通时两项均留空。
 
+人工邮箱开通后，将上面两项空值替换为已确认的公开地址，其余邮件变量保留：
+
+```dotenv
+AUTH_EMAIL_REPLY_TO="support@agent-communication.online"
+NEXT_PUBLIC_SUPPORT_EMAIL="support@agent-communication.online"
+```
+
+这两项独立生效：Reply-To 只决定账户事务信的回复目的地，公开构建变量只启用网站的客服链接和提示。单独修改一项不会自动启用另一项；事务信 From 仍是 `accounts@notify.agent-communication.online`。公开地址须在构建主机作为 Web build arg 传入，并在服务器 `.env` 保留相同值，再按下文发布新镜像与重新创建 Web 容器。
+
 空密钥可用于本地隔离检查；它不启用邮件。缺少必需的密钥、From、NEXTAUTH_URL，或生产 Origin 不是 HTTPS 时，邮件操作返回服务未配置；新用户不能完成验证注册、找回或修改密码，不得称这些流程已经上线。有效配置下，公开注册／重发／找回接口对账户不存在、提供商失败或限流仍使用统一中性提示，不能据此断言已发信；认证后的修改密码可显示明确的服务不可用或限流错误。已有迁移账户仍可按原密码登录，邮箱验证状态仍为未验证；账户页可发起补验。新增账户必须完成真实邮箱验证才能登录。
 
 按[部署与升级指南](DEPLOYMENT.md#升级备份与回退)备份并发布固定组件提交。已启用 v2 的环境不能遗漏 `docker-compose.v2.yml`。以下只展示配置检查和重建已有服务，现有低内存服务器的镜像应按部署指南在另一主机构建、上传并校验，不能直接照此在 ECS 上构建：
