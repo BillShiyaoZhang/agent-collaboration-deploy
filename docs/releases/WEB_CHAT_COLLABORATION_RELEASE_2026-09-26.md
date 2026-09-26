@@ -29,7 +29,13 @@ P2 的流式回复、附件、日历执行和更完整的协作会话留作后�
 | 根发布工具 | 5 项通过 |
 | 早期试用安装与发布工具 | 44 项通过 |
 | 云端备份/验收脚本 | 12 项通过，兼容服务器 Python 3.6 |
-| Web 单元、构建、浏览器和生产镜像 | 最终结果待验收完成后补充 |
+| Web 单元与共享逻辑 | 243 项通过 |
+| Next 生产构建 / TypeScript | 通过 |
+| 实际生产镜像 | 13 项通过：非 root 网络服务、旧库增量迁移、身份保留、HTTP 与匿名 API |
+| 工作台浏览器 | 9 项通过，含跨设备草稿、迟到 GET、窄屏；页面异常为 0 |
+| 断线和进程重启 | 3 项通过，恢复历史且不重复发送 |
+| 可访问性浏览器 | 44 项通过 |
+| 合作产品故事、消息与提醒回归 | 最终结果待验收完成后补充 |
 
 Hermes 相关测试使用实际安装的解释器依赖与独立测试目录；公开包的构建与发布还必须以正式 CI 成功和资产校验为准。
 
@@ -43,9 +49,25 @@ Hermes 相关测试使用实际安装的解释器依赖与独立测试目录；�
 
 切换将使用本地构建的 Linux amd64 Web 镜像，不在小内存生产服务器执行 Next 构建。只重建 Web，并检查/reload nginx；Platform 镜像和容器不替换。原持久数据卷保留，数据库只做添加表和索引的增量迁移。
 
-## 实际发布证据
+## 固定版本与 GitHub 发布
 
-待完成生产切换、GitHub 发布与只读验收后补充。
+| 对象 | 固定值 |
+| --- | --- |
+| Deploy 发布源码 | `d00abafbf926752d7a84fb1b3e62ebf6d137dbe8` |
+| Web 运行源码 | `bec1c0da400bdc0ae7d1275402dd2bbcab231540` |
+| Platform 固定引用 | `8382a74a881ded7d46241c9333ac06bb55fe078d` |
+| SDK v0.9.3 | `fb7fb916945a5c11c219c517f7ff20a1b2856105` |
+| Web 镜像 ID | `sha256:1d31745c3e7102f4e942e1f4681ef41aeee49329a10d4a852f3b0878dc908f98` |
+| 镜像压缩包 SHA-256 | `ef9284decd390d78d9a1b6f88043ff707e1a16ba3f65fff5cb1d1cdf02bfdaa1` |
+| 源码快照 SHA-256 | `ad0a1dc679ee8a3dc3dcd72bda67e9f313dd1a560b147ae55457db48118c9c8d` |
+
+四仓实现已推送至 GitHub main，并保留 `codex/web-chat-collaboration` 分支。镜像从提交中的 Git blob 快照构建，镜像标签记录 Web revision；后续纯测试/验收文档提交不改变这个应用镜像。
+
+[正式 CI](https://github.com/BillShiyaoZhang/agent-comm/actions/runs/36219401522)全部通过，[v0.9.3](https://github.com/BillShiyaoZhang/agent-comm/releases/tag/v0.9.3)于 2026-09-26 05:01:22 UTC 正式发布 16 项资产。本机下载并校验全部资产；四平台安装 ZIP 的内部文件、wheel 与发布信任资料以及源码 ZIP 的固定引用均通过。官网五 ZIP 和正确的 `early-access-manifest.json` 已上传受限暂存目录，尚待下载目录切换。交叉编译与包校验不代表已在四种系统上分别运行 Hermes。
+
+## 实际生产切换与公网验收
+
+待完成生产切换与只读验收后补充。
 
 ## 回滚
 
