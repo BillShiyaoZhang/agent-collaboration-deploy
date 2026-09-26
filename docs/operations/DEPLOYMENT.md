@@ -55,7 +55,7 @@ Compose 在上述两个密钥或 `NEXTAUTH_URL` 缺失、为空时拒绝启动�
 
 当前 Compose 的 Web `DATABASE_URL` 使用 `connection_limit=1`，使单个 Web 进程的 Prisma 查询排队等待一条 SQLite 连接。读写都经过该连接；这是有超时的进程内缓冲，不是持久任务队列，也不协调多个 Web 副本。升级后监看控制轮询分段耗时、页面读取时延、SQLite Code 5 与连接池等待超时 `P2024`；多副本或持续高写入负载应改用适合并发写入的服务型数据库。变更和验收记录见 [Web SQLite 缓冲发布记录](../releases/WEB_SQLITE_BUFFER_RELEASE_2026-09-23.md)。
 
-官方邮箱按[腾讯人工邮箱与 Resend 账户邮件指南](EMAIL.md)开通：网站 A/AAAA 和现有根域 MX 保留，notify 子域仅验证 Resend 发信；腾讯 support 人工收信可以后开通。部署 `.env` 中配置 `RESEND_API_KEY`、`AUTH_EMAIL_FROM`、`AUTH_EMAIL_REPLY_TO`、`AUTH_EMAIL_DAILY_LIMIT`，默认每天 90 次事务发送；Reply-To 可空；网站客服由构建时 `NEXT_PUBLIC_SUPPORT_EMAIL` 控制，默认空隐藏。更改运行时变量后需重新创建 Web 容器，更改公开客服地址还须重建 Web 镜像。未开通邮件不能声称新注册验证、找回或修改确认已可用。
+官方邮箱按[阿里免费人工邮箱与 Resend 账户邮件指南](EMAIL.md)开通：网站 A/AAAA 保持不变，根域 MX 在开通阿里时按邮箱控制台配置，notify 子域继续用于 Resend 发信；阿里 support 人工收信可以后开通。部署 `.env` 中配置 `RESEND_API_KEY`、`AUTH_EMAIL_FROM`、`AUTH_EMAIL_REPLY_TO`、`AUTH_EMAIL_DAILY_LIMIT`，默认每天 90 次事务发送；Reply-To 可空；网站客服由构建时 `NEXT_PUBLIC_SUPPORT_EMAIL` 控制，默认空隐藏。更改运行时变量后需重新创建 Web 容器，更改公开客服地址还须重建 Web 镜像。未开通邮件不能声称新注册验证、找回或修改确认已可用。
 
 nginx 对注册、验证／重发、找回／重置、修改／确认与凭证登录共享每客户端每分钟 5 次、突发 5 次的限制，超额返回 429；认证请求体上限 16 KiB，`/api/v2/` 上限 2 MiB，其余请求上限 1 MiB。账户 token 页面有 `no-store` 和 `no-referrer` 响应头，访问日志不记录 query 或 Referer；错误日志可能包含原请求 URL，须限制访问并在分享前删除 token。它覆盖传入的 `X-Real-IP`、`X-Forwarded-For`。Platform 的 `api.trusted_proxy_cidrs` 仅允许受信任代理提供客户端地址，组合配置兼容 Docker 默认 `172.16.0.0/12` 地址池。生产应收窄到实际 nginx 地址或专用子网，不向公网发布 8080，也不将不受信任容器加入该网络；自定义地址池必须相应调整配置。
 
