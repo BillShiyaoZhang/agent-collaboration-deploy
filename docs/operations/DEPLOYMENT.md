@@ -119,7 +119,9 @@ docker compose logs --tail=100
 
 现网签名策略为 `compliance`、epoch 3 长期策略、`allow_v1=false`，Relay 禁用；策略摘要和技术到期时间见[迁移指南](V2_MIGRATION.md)与[长期策略记录](../releases/V2_PERSISTENT_POLICY_2026-09-25.md)。签名字段不变时无需例行续签；模式、密钥、平台身份或其他签名字段变化时，用离线根签发更高 epoch，并先处理旧策略下未读或待发的 v2 消息。生产升级须保留 [v2 Compose 覆盖配置](V2_MIGRATION.md#compose-v2-覆盖文件)和原有身份、数据库及在线密钥。普通服务升级不自动改变用户信息披露范围；策略变化必须重新告知并取得两端各自的本机授权，Web 账户另行确认。
 
-Platform 管理后台的日常操作、权限和结果边界见[管理后台指南](PLATFORM_ADMIN.md)。管理台修改的存储、转发策略、历史保留天数，以及确认后保存的 Registry、MQ、Relay 运行参数均保存在 `platform_data` 卷中的 `/data/admin-policies.yaml`；升级与备份时须包含此文件。
+Platform 管理后台的日常操作、权限和结果边界见[管理后台指南](PLATFORM_ADMIN.md)。管理台修改的存储、转发策略、已确认信封保留天数、合规明文保存天数，以及确认后保存的 Registry、MQ、Relay 运行参数均保存在 `platform_data` 卷中的 `/data/admin-policies.yaml`；升级与备份时须包含此文件。
+
+合规明文历史仅保存升级后经签名 v2 `compliance` 网关成功准入的消息，不回填旧消息。`platform.compliance_retention_days` 缺省为 30，从平台接收时间计算，与投递 TTL 和 ACK 分开；管理页可在线修改，设为 0 会清除明文历史并停止留存。实际模式仍由签名策略决定，`platform.mode` 展示字段不会启用解密。
 
 升级前保留一致的 Web SQLite 备份、Platform 数据与身份、`.env`、配置和当前镜像，并记录回滚标识。主配置 `deploy/platform/config.yaml` 仍以只读方式挂载，首次升级没有覆盖文件时沿用主配置值。Web 启动入口幂等应用 [`prisma/remote-console.sql`](../../agent-collaboration-web/prisma/remote-console.sql)，为远程控制与账户工作台增加所需结构；迁移保留历史业务表，不以清库方式升级。
 
