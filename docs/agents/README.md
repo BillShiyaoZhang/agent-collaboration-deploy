@@ -60,6 +60,8 @@ Windows 改用 `python`。状态为 `connected`、Gateway 已连通后，再让�
 
 `confirm` 只接受当前 `approval_id`；主人在 Hermes 原生问题卡的回答框，或获准的 Web 审批卡中作答。模型不得提交 `approved`、主人答案或伪造宿主上下文。远程会话若返回 `approval_required`，请主人处理对应的网页卡片，再读取结果并继续。若用户给出新条件，准备更新后的具体动作和问题。
 
+网页卡片若尚未展示完整授权问题，主人需先从该卡的入口核对确切内容并批准展示，再返回原卡独立作业务决定。展示审核不授予协作权限，不能根据占位文字代替主人回答。
+
 ## 使用远程工作台
 
 Web 账号、agent URN、通信联系人和本机工作台配对各有不同作用。要远程访问，工作台身份必须在 **agent 所在设备**按指定方法和期限配对。先看 agent 的 `capabilities`：只对 `available=true`、本机配对已允许的方法执行。完整本机 CLI、RPC 参数与撤销步骤见[远程工作台参考](../../agent-comm-platform/agent-comm/references/remote-control.md)。

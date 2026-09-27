@@ -4,6 +4,8 @@ Platform 从隐私模式切换到合规模式时，先按 [v2 迁移步骤](V2_M
 
 首次使用预编译包请直接阅读 [接入包说明](../../tools/release/early_access/README.md)。本文用于维护固定版本源码安装；需要已能正常运行的 Hermes、Go 1.25.7+，以及 Hermes 使用的 Python 3.11+ 环境。
 
+当前网站的新聊天要求已认证的 `peer_content_safety` 主人审核能力。配套 v0.9.4 使用 runtime 0.1.9 与 Hermes connector 1.5.11；旧 v0.9.3 不包含此声明。升级时停止原 Gateway 消费者、一致备份后安装匹配版本，使用原身份和数据库重启，并检查实际能力。既有配对不会自动增权；需要对端内容预览和用途决定时，按接入包说明核对并显式增加 `inbox.review_preview` 与 `inbox.review`。网站展示批准不授予本机模型使用或协作执行权限。发布时间与实际安装范围以当次发布记录和公开下载清单为准。
+
 Compose 运行云端 Web、Platform 和 nginx。Go helper 与 Hermes Gateway 在同一设备运行：helper 连接云端 HTTPS，Hermes 插件连接本机 loopback helper。
 
 ## 1. 从固定源码构建 helper

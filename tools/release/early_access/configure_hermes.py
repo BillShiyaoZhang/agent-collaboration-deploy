@@ -20,8 +20,8 @@ import uuid
 
 from install import ensure_hermes, utf8_output
 
-PAIR_METHODS = ["capabilities", "contacts.list", "contacts.requests", "collaboration.state", "inbox.list", "attention.list", "conversation.send", "conversation.get"]
-WEB_ACTION_METHODS = ["contacts.add", "contacts.respond", "messages.send", "inbox.mark_read", "approval.respond", "collaboration.execute"]
+PAIR_METHODS = ["capabilities", "contacts.list", "contacts.requests", "collaboration.state", "inbox.list", "inbox.review_preview", "attention.list", "conversation.send", "conversation.get"]
+WEB_ACTION_METHODS = ["contacts.add", "contacts.respond", "contacts.block", "contacts.unblock", "inbox.review", "messages.send", "inbox.mark_read", "approval.respond", "collaboration.execute"]
 
 
 class NoRedirect(HTTPRedirectHandler):

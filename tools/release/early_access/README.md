@@ -118,7 +118,7 @@ python configure_hermes.py --remote --pair-console CONSOLE_URN --expires FUTURE_
 python configure_hermes.py --remote --pair-console CONSOLE_URN --expires FUTURE_UTC_EXPIRY
 ```
 
-这两条命令的默认范围包括 capabilities、contacts.list、contacts.requests、collaboration.state、inbox.list、attention.list，以及 conversation.send / conversation.get。实际配对时，脚本先让本机 helper 自动向 platform 签名注册现有身份，成功后把配对绑定到实际 Hermes profile，并将控制台加入明确 allow_from。`--check-only` 不注册或写入权限；注册失败保留原配置。
+这两条命令的默认范围包括 capabilities、contacts.list、contacts.requests、collaboration.state、inbox.list、inbox.review_preview、attention.list，以及 conversation.send / conversation.get。`inbox.review_preview` 只读取本次对端内容的完整预览，不批准用途。实际配对时，脚本先让本机 helper 自动向 platform 签名注册现有身份，成功后把配对绑定到实际 Hermes profile，并将控制台加入明确 allow_from。`--check-only` 不注册或写入权限；注册失败保留原配置。
 
 要允许在 Web 的“联系人”中添加联系人，并在“事项”中同意或拒绝待确认请求，使用新版 Agent/runtime 和 Web，并显式加入 `--allow-web-actions`：
 
@@ -127,7 +127,7 @@ python configure_hermes.py --remote --pair-console CONSOLE_URN --expires FUTURE_
 python configure_hermes.py --remote --pair-console CONSOLE_URN --expires FUTURE_UTC_EXPIRY --allow-web-actions
 ```
 
-此选项额外授予 `contacts.add`、`contacts.respond`、`messages.send`、`inbox.mark_read`、`approval.respond`、`collaboration.execute`。它支持 Web 好友请求与接受/拒绝、发消息、共享已读，以及在 Web 聊天中调用本机协作工具。先核对第一条命令显示的控制台、真实 profile、全部方法和期限，再执行第二条。通讯录、收件箱、请求状态、审批与操作结果仍由 agent 保存并同步到 Web；提交好友请求后需等待对方接受才能显示已建立连接。
+此选项额外授予 `contacts.add`、`contacts.respond`、`contacts.block`、`contacts.unblock`、`inbox.review`、`messages.send`、`inbox.mark_read`、`approval.respond`、`collaboration.execute`。它支持 Web 好友请求与接受/拒绝、屏蔽与解除屏蔽、明确审核对端内容用途、发消息、共享已读，以及在 Web 聊天中调用本机协作工具。允许调用审核方法本身不批准任何一条消息；网站展示审核与 Agent 本机用途授权分别确认。先核对第一条命令显示的控制台、真实 profile、全部方法和期限，再执行第二条。通讯录、收件箱、请求状态、审批与操作结果仍由 agent 保存并同步到 Web；提交好友请求后需等待对方接受才能显示已建立连接。
 
 已有配对不会因为安装、代码升级或单独执行 `--remote` 自动增权。升级现有配对时使用同一控制台 URN，在本机显式执行上述带 `--allow-web-actions` 的两条命令；重配会以计划中的完整方法集合和期限替换该控制台的原配对。若原配对使用自选方法，应改用 `python -m agent_comm_runtime.daemon remote pair`，逐项 `--allow` 保留所需方法并加入所需新增项。重启 Gateway 后，在 Web 查询能力并检查已授权功能。
 

@@ -25,6 +25,8 @@
 
 nginx 将 `/`、`/docs/`、登录与工作台交给同一个 Next.js Web 应用；`/docs/source/{deploy,web,platform,sdk}/...` 仍从对应仓库的 `docs/` 直接读取 Markdown。Web 应用也提供同路径的只读入口，供不经过 nginx 的本地运行使用。源文件 URL 保留仓库名和相对路径，不需同步第二份文档；两个入口都只允许现行的角色、架构、运维和指南 Markdown，发布、验证、测试历史记录继续在仓库中查阅。[Platform API 参考](https://agent-communication.online/docs/?path=platform/guides/API.md)由同一阅读器打开；旧 `/docs/api/` 和 `/guide/` 地址重定向到新入口。`/healthz`、`/api/v1/`、`/api/v2/`、`/admin` 交给 Platform，其余路径包括 `/api/auth/` 交给 Web。修改公共页面需重建 Web 镜像；只修改已挂载的公开 Markdown 原文无需重建应用。完整文档入口需要本 Compose 中四仓的只读文档挂载，详见 [Web 部署说明](../../agent-collaboration-web/docs/operations/DEPLOYMENT.md)。
 
+控制台恢复验收需区分原身份的 Registry 登记与 managed MQ 证书。平台 Registry TTL 当前配置为 24 小时；Web 在发送控制请求与取回响应前，使用原密钥重签登记并缓存成功结果 30 秒，保留原 URN 与本机配对。若 Agent 收到请求但 helper 报无法解析原 Console 身份，核对登记的 TTL 和真实回复投递状态；本机 `accepted` 队列不是平台或业务完成。按 [Web 部署说明](../../agent-collaboration-web/docs/operations/DEPLOYMENT.md)验证登记失效后的只读认证往返，不新建身份或直接改生产数据库。
+
 ## 准备源码与环境
 
 ### 隐私与账户删除版本
