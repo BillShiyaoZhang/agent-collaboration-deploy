@@ -1,6 +1,6 @@
 # 官网、控制台与 Admin 视觉更新及接入包配套发布（2026-09-28）
 
-**状态：本轮部署与约定的全流程验收完成。** 官网、控制台、Admin 与 r7 Web 已部署；v0.9.5 GitHub 正式发布的 16 项资产及官网公网七个下载入口通过独立校验。原 Alice/Bob 已升级正式 v0.9.5 接入包，真实协作达到双方同一协议终态并精确清理四项合成任务；独立 Fresh 首装、两回合真实模型与精确清理、原 Alice/Bob 在 Fresh 后的只读保护复核及最终云端复核也通过。GitHub `main` 收敛待处理。本记录不会将页面显示、请求提交、队列 ACK 或局部审批写成业务完成。
+**状态：本轮部署与约定的全流程验收完成，四仓仅保留 `main`。** 官网、控制台、Admin 与 r7 Web 已部署；v0.9.5 GitHub 正式发布的 16 项资产及官网公网七个下载入口通过独立校验。原 Alice/Bob 已升级正式 v0.9.5 接入包，真实协作达到双方同一协议终态并精确清理四项合成任务；独立 Fresh 首装、两回合真实模型与精确清理、原 Alice/Bob 在 Fresh 后的只读保护复核及最终云端复核也通过。本记录不会将页面显示、请求提交、队列 ACK 或局部审批写成业务完成。
 
 ## 范围与版本
 
@@ -84,4 +84,4 @@ Fresh 清理及原双方保护复核之后，r7 一次性云端最终验证的�
 
 证据保存在忽略的 `build/personal-style-release/` 下，包括 `web-preview-version-r5/artifact/`、r6 与 r7 各阶段 `observed-*-observe-*.json`、`web-preview-version-r7/observed-deploy-progress-3-r7.json`、`web-preview-version-r7/observed-final-observe-4-r7.json`、`official-v095/verification-official-v095.json`、`r7-production-ui-capture.json` 和三张 r7 页面截图、`synthetic-v095-original-upgrade.json`、`synthetic-v095-original-upgrade-postcheck.json`、`synthetic-r6-v5-runtime-ready.json`、`synthetic-app-r6-proposal-continuation-v4.json`、`synthetic-app-r6-terminal-continuation-v5.json`、`synthetic-r6-v5-post-invariant.json`、`fresh-v095-terminal-summary.json`、`synthetic-r6-post-fresh-preservation.json` 及各自固定的阶段与恢复回执。各记录只支持各自阶段；私人凭据、数据库、原始消息与日志未提交。本轮没有真实 Mac 首装、真人邮件或日历操作。
 
-**GitHub 待处理：** 四仓远端分支收敛到 `main` 后，补记实际合并提交和它们与线上 r7 固定源码的关系。部署及本轮约定的全流程验收已完成；纯文档或 PR 合并不代表线上再次部署。
+**GitHub 收敛：** 根仓 [PR #2](https://github.com/BillShiyaoZhang/agent-collaboration-deploy/pull/2) 以普通 merge 合入 `main`，合并提交为 `5b85109fa5400c9b6e4d698db6a07c178eacdee3`，两个父提交分别为原 `main` `0c807a330d9c2e277ac9860fd72e8b537b68ecf1` 和最终验收文档 head `472dd4ec620be24b9a5cc9a8caee43ba3511edf8`。删分支后 Web、Platform、SDK 的远端 `main` 分别为 `7e154a3531e799c53b72d0bc80a24c966476a95c`、`b89792230bf28ce5862dff651fb3dceeb8827a5d`、`05d1b28220aa9b938361b35c8f8791da79026596`；四仓本地与远端均只保留 `main`，SDK `v0.9.5` 标签仍指向发布提交 `ff1419c156dee590d100ceeaea05aacf49c037e4`。这些 `main` 合并提交包含上线时固定的 r7 源码提交；本记录的纯文档补记不表示服务器再次部署。

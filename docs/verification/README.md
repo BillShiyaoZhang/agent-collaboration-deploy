@@ -2,7 +2,7 @@
 
 ## 本轮已完成的部署与验收
 
-- [2026-09-28 官网、控制台、Admin 与 v0.9.5 验收](PERSONAL_SOFTWARE_STYLE_2026-09-28.md)：r7 部署、v0.9.5 GitHub 与公网下载、原双 Agent 有限协作清理、独立 Fresh 首装及保护复核、最终云端只读门禁通过；GitHub `main` 收敛待处理。
+- [2026-09-28 官网、控制台、Admin 与 v0.9.5 验收](PERSONAL_SOFTWARE_STYLE_2026-09-28.md)：r7 部署、v0.9.5 GitHub 与公网下载、原双 Agent 有限协作清理、独立 Fresh 首装及保护复核、最终云端只读门禁通过；四仓仅保留 `main`。
 
 ## 进行中的验收
 
