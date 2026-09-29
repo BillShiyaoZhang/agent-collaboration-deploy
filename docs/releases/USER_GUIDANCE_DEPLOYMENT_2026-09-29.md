@@ -27,3 +27,13 @@ Platform `407ed72` 相对原运行镜像标注的 `ba779d1`，自身源码只变
 切换前在私有 `/root/agent-comm-releases/guidance-20260929/backup/platform-pre-switch/` 中新建当前 Web SQLite 在线快照，以及 `.env` 和外部 v2 配置、策略与密钥归档。随后短暂停止原 Platform，三库 `PRAGMA quick_check=ok` 后完整归档 `platform_data`，包含数据库、身份密钥、管理策略及当时存在的 WAL/SHM；归档为 776,918,131 字节，SHA-256 `357afdf239c7593ece919e4a3fd0a081fbd9a748dd1b837a750cd1ce929475e3`，`gzip -t` 和 tar 全量列表均通过。原容器在备份后先恢复运行。旧镜像 `sha256:87799b78e0d51b067759c498bd1bb9deda900e8c0b243bb62be45d49cd7abea1` 保留 `rollback-20260929-before-guidance` 标签；归档及配置备份仅 root 可读。未把备份覆盖实时卷。
 
 北京时间约 20:51，在保留签名 v2 Compose 覆盖文件及原数据卷的情况下，仅重建 Platform 容器，然后检查并重载 Nginx；Web 和 Nginx 容器未重建。切换后 Platform 为目标镜像、`running`、重启数 0，原配置、v2 策略/公钥/网关与回执私钥只读挂载及 `/data` 命名卷均存在。公网 bootstrap 的 Peer ID 仍为 `12D3KooWNApwdxwbXY27N44cGxTXY15Hn8yRx9m9Yw5St5A7kTpK`；签名策略原字节 SHA-256 仍为 `6f9f7bdf26c5e7761cbe8c451a22fd11f9a448d912fa5bc3ae61c1e53f3ff5c4`，epoch 3、`compliance`、`allow_v1=false`。Web、Registry、MQ、审计四库再次 `quick_check=ok`；首页、登录、文档、`/healthz`、bootstrap、v2 policy 均返回 HTTP 200，三个服务容器持续运行且重启数 0。新 Platform 近十分钟日志中未匹配到 `panic` 或 `fatal`；这些只读检查不代替新的双方 Agent 业务验收。
+
+## 同日补充：聊天中 `@事项` 的授权引导
+
+用户在手机聊天页指出，原提示虽说明缺少事项读取能力，却没有给出授权入口。Web `3074339ce647d94b7be232c10d2909e69c7ea841` 将 `@` 提示按政策暂停、待核验、离线、需要恢复配对和方法缺失区分，并链接到**当前 Agent** 的连接设置；该页自动展开说明、控制台 URN、预览和执行命令。默认选中的基础范围包含 `task.list` 与 `task.detail`，只有用户主动选“含网页操作”时，命令才带 `--allow-web-actions`。页面明确重配会替换原方法和期限，原有自选方法需逐项保留；网页本身不改变本机授权。用户和接入包说明同步修正默认方法列表及原设备、原 profile 的恢复步骤。
+
+本机 `npm run build` 无警告通过，`task-mentions.test.cjs` 2/2 通过，文档结构检查 156 个 Markdown、0 错误。Web 与根仓库提交推送至各自 GitHub `main`；云端源码固定在根 `755a24ca41950bb8e86f0eb875ecd081308f5610`、Web `3074339`，Platform 与 SDK 固定提交未变。Linux/amd64 Web 镜像 `sha256:64722b2f16e9bac30db7f3754c7c62f8526c5fef685d32412bc26449697169d7` 的 OCI revision 为完整 Web 提交。上传归档为 191,469,187 字节，SHA-256 `cfbc015c83913a90882ff5fc277155007135788adc7e7c51ce13a3713b987b01`，云端哈希和 `gzip -t` 均通过。
+
+切换前以 SQLite `.backup` 为卷内实际 `prod.db` 建立私有一致性快照 `/root/agent-comm-releases/mention-guide-20260929/backup/prod-verified.db`，`quick_check=ok`，SHA-256 `cb23b6ec2d4116a1d0bda9d3f02cd077cd97d43aaa1bf2007528336900ba4829`；原运行 Web 镜像另标为 `agent-collaboration-deploy-web:rollback-before-3074339`。仅用签名 v2 Compose 组合重建 Web，Nginx 检查后重载。北京时间约 22:20，Web 已运行目标镜像且重启数 0；Platform 与 Nginx 容器启动时间未变。首页、登录、文档及健康检查返回 200；未登录聊天入口返回预期的 307。切换后生产 `prod.db` 首次直接检查遇到短暂锁，稍后使用 10 秒忙等待重试得到 `quick_check=ok`。
+
+内置浏览器在既有账户中实测：聊天输入 `@` 后出现“查看此 Agent 的授权步骤”，链接准确指向该 Agent 的 `/dashboard/connections?agent=…&guide=task-mentions`；到达后步骤已展开，默认预览与执行命令均不含 `--allow-web-actions`，切到“含网页操作”时两条命令才加入该参数。按手机布局尺寸再次查看引导卡；没有运行配对命令、扩大该账户或 Hermes 的权限，也没有发送聊天。此验收证明网页引导和部署生效，不证明该 Agent 已获得事项读取权限。
