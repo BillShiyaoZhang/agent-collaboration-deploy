@@ -64,7 +64,7 @@ curl --fail http://127.0.0.1:45042/info
 
 升级前备份 helper 密钥、mailbox、connector receipts、协作状态库、远程配对/会话库及实际 profile 配置。先定位真实 profile 中同名的旧插件副本，再停用它并安装当前 SDK 版本；不得删除身份或状态库来解决重复安装。一个 helper inbox 只运行一个活跃 connector/standalone 消费者。
 
-通过日常服务管理器正常重启 Gateway，检查 helper `/info`、Gateway 日志中的 SSE 连接及新安装路径。Hermes 使用内部宿主会话能力，升级 Hermes 后需重新验证原生确认和远程会话。
+通过日常服务管理器正常重启 Gateway 与桌面后端，检查 helper `/info`、Gateway 日志中的 SSE 连接及新安装路径。记录重启前后的 Gateway PID 和进程启动时间，确认旧进程已退出、新进程使用实际 Hermes Python 与原 profile；仅有 wheel 版本或磁盘文件更新不能证明运行中的 Gateway 已加载新模块。再从已配对工作台重新查询**本机实时认证**的 `capabilities`，逐字段核对 `peer_content_safety={version:1,mode:"owner_review",automatic_peer_model_execution:false}`，并用待审入站的元数据状态核对本机审核门禁。若进程或能力不符，保持原身份和状态排查重启，不将安装成功或 helper ACK 写成审核生效。Hermes 使用内部宿主会话能力，升级 Hermes 后还需重新验证原生确认和远程会话。
 
 ## 5. 配对与验证
 

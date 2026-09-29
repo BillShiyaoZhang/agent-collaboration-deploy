@@ -54,9 +54,11 @@ python3 onboard_hermes.py --status
 2. 在新包目录，用原 Hermes Python 执行下方第 1 节的校验和安装命令。安装器会重装包内的 runtime 与 connector，即使包版本号与原安装相同。
 3. 在原 helper 已安全停止时，执行 `python install.py --pin-only --identity-dir 原身份目录`。安装器校验包、要求已有身份密钥，并用新 helper 幂等固定发布者核对的策略根和 Platform ID；冲突的既有 pin 会拒绝覆盖。随后用新包中的 helper 执行第 2 节的 `daemon` 命令，将 `./agent-data` 换成原身份目录的实际路径。已有身份无需再次执行 `init`，也不要在新包目录创建另一个身份。
 4. 按第 4 节使用原控制台 URN、明确的新期限及 `--allow-web-actions` 先检查计划再重新配对；使用非默认 helper 端口时，同时传入原来的 `--helper-url`。新版脚本会更新本机待办界面并备份配置。
-5. 重启 Gateway 与 dashboard，重载 Desktop；在 Web 检查连接与已授权功能。消息、好友请求、共享已读和协作操作应以本机同步结果为准。
+5. 重启 Gateway 与 dashboard，重载 Desktop；记录旧、新 Gateway PID 与启动时间，确认旧进程退出，新进程使用原 profile 和刚安装 wheel 的 Hermes Python。在 Web 重新检查连接，读取 agent 本机认证的实时 `capabilities`，逐字段核对 `peer_content_safety={version:1,mode:"owner_review",automatic_peer_model_execution:false}` 及已授权方法。消息、好友请求、共享已读和协作操作应以本机同步结果为准。
 
 旧配对不会自动获得新权限。事项检索和详情需要 `task.list`、`task.detail`、`task.events` 的明确授权；旧配对升级后须重新配对才能使用这些视图。旧 agent 或未授权共享已读的配对，在 Web 提醒中心的消息“标记已读”按钮会禁用，并提示升级和重新配对；不会仅在 Web 中伪造 agent 已读。其它审批提醒的查看确认仍可使用，不代表同意审批。旧版单边保存的联系人显示为尚未验证，需明确发送好友请求并由对方接受后才显示已建立连接。
+
+`pip`/wheel 版本、安装器成功和 helper 连接都不能代替新 Gateway 进程与上述真实能力回执；运行中的旧模块可能继续消费来信。若能力缺失或 PID/启动时间显示旧进程未退出，先按原服务管理方式排查并重启，保留身份、mailbox 和数据库，不把旧进程的收件或 ACK 当作主人内容审核已生效。此核对只针对当前本机安装，不说明公开下载包或线上组件已经更新。
 
 ## 1. 安装到实际 Hermes Python
 

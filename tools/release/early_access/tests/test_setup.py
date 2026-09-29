@@ -272,16 +272,21 @@ class TestConfigureHermes(unittest.TestCase):
         (self.source / "gateway/platforms/base.py").write_text("# fake host contract", encoding="utf-8")
         (self.source / "hermes_constants.py").write_text(
             "import os\nfrom pathlib import Path\ndef get_hermes_home(): return Path(os.environ['HERMES_HOME'])\n", encoding="utf-8")
+        # JSON is a YAML-compatible subset for this fixture. The setup script
+        # exercises Hermes's config API, not the host's YAML parser, so keep
+        # the fake host independent of an external PyYAML installation.
         (self.source / "hermes_cli/config.py").write_text('''
+import json
 import os
 from pathlib import Path
-import yaml
 from hermes_constants import get_hermes_home
 def get_config_path(): return get_hermes_home() / "config.yaml"
 def is_managed(): return False
 def require_readable_config_before_write(path):
     if not path.exists(): return {}
-    try: data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    try:
+        text = path.read_text(encoding="utf-8")
+        data = json.loads(text) if text.strip() else None
     except Exception as exc: raise RuntimeError("Malformed config") from exc
     if data is None: return {}
     if not isinstance(data, dict): raise RuntimeError("Config root must be mapping")
@@ -289,7 +294,7 @@ def require_readable_config_before_write(path):
 def atomic_config_write(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".test-tmp")
-    tmp.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     os.replace(tmp, path)
 ''', encoding="utf-8")
         self.saved_modules = {key: module for key, module in list(sys.modules.items())

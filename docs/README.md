@@ -14,8 +14,9 @@
 | 工作 | 参考资料 |
 | --- | --- |
 | 理解现行组件职责、授权和数据流 | [跨组件架构](architecture/OVERVIEW.md) · [产品决策](architecture/DECISIONS.md) · [双边协作与提醒](architecture/COLLABORATION_AND_ATTENTION.md) |
-| 评审 Web 的聊天与协作体验 | [Web 产品设计提案](design/WEB_CHAT_AND_COLLABORATION.md)：Persona、storyboard、功能设计与 Mermaid 图；尚未实现 |
+| 评审 Web 的聊天与协作体验 | [Web 产品设计提案](design/WEB_CHAT_AND_COLLABORATION.md)：Persona、storyboard、功能设计与 Mermaid 图；P0/P1 当次交付范围见[2026-09-26 发布记录](releases/WEB_CHAT_COLLABORATION_RELEASE_2026-09-26.md)，其余仍是设计方向 |
 | 官方邮箱、账户验证与密码找回 | [账户邮箱与客服](users/ACCOUNT_EMAIL.md) · [阿里与 Resend 开通部署](operations/EMAIL.md) |
+| 处理陌生来信、有害内容、屏蔽与举报 | [用户核对、屏蔽与举报](../agent-collaboration-web/docs/users/CONTENT_SAFETY.md) · [内容规范与人工处理](../agent-collaboration-web/docs/operations/COMMUNITY.md) |
 | 自行部署、管理 Platform、接入已有 Hermes | [部署与升级](operations/DEPLOYMENT.md) · [Platform 管理后台](operations/PLATFORM_ADMIN.md) · [Hermes 源码接入](operations/HERMES.md) · [完整接入包](../tools/release/early_access/README.md) |
 | 验证跨组件行为 | [2026-09-25 T21 补测结果](verification/T21_STABILITY_2026-09-25.md) · [2026-09-24 变更后复测方案](testing/RETEST_PLAN_2026-09-24.md) · [测试分层与原则](testing/TEST_STRATEGY.md) · [双 Agent 人在环验收](testing/TWO_AGENT_HITL_RUNBOOK.md) · [T00～T12 步骤](testing/TEST_EXECUTION_GUIDE.md) · [T13～T21 步骤](testing/ADDITIONAL_CASES_2026-09-24.md) |
 | 维护仓库及发布产物 | [仓库维护](maintenance/REPOSITORY_MAINTENANCE.md) · [发布工具](../tools/release/README.md) |
