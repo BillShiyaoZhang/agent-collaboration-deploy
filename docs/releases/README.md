@@ -4,7 +4,7 @@
 
 | 日期 | 发布 | 记录内容 |
 | --- | --- | --- |
-| 2026-09-29 | [用户情境引导与 Web 部署](USER_GUIDANCE_DEPLOYMENT_2026-09-29.md) | 官网、Web、用户与 agent 指南补齐接入、审核、失败恢复、停用引导；云端 Web 与文档更新、备份及公网只读验收；SDK 源码已推送，公开包仍为 v0.9.6 |
+| 2026-09-29 | [用户情境引导与 Web、Platform 部署](USER_GUIDANCE_DEPLOYMENT_2026-09-29.md) | 官网、Web、用户与 agent 指南补齐接入、审核、失败恢复、停用引导；云端 Web 与 Platform 固定镜像切换、备份及公网只读验收；SDK 源码已推送，公开包仍为 v0.9.6 |
 | 2026-09-28 | [官网、控制台与 Admin 视觉更新及 v0.9.5 配套发布](PERSONAL_SOFTWARE_STYLE_2026-09-28.md) | 官网与管理界面及 r7 Web 已部署；v0.9.5 GitHub/公网下载、原双 Agent 升级与有限协作、独立 Fresh 首装及保护复核、最终云端只读门禁通过；四仓仅保留 `main` |
 | 2026-09-27 | [Platform 合规明文历史与保存期](PLATFORM_COMPLIANCE_HISTORY_2026-09-27.md) | 固定 Platform 镜像上线、合规历史与独立保存期；初轮回退后第二次只读验收通过，47 用户/42 Agent 与四库保留；Go 全套/39 项 Node 通过，生产正文与设置写入未验收；PR 已合并，四仓仅留 main |
 | 2026-09-27 | [人工客服邮箱启用](SUPPORT_EMAIL_RELEASE_2026-09-27.md) | 阿里 support 网站入口与账户邮件 Reply-To；固定镜像重建、四库与 47 用户/41 连接保留，8 页公网验证通过 |
