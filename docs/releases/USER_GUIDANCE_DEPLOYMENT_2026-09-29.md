@@ -37,3 +37,11 @@ Platform `407ed72` 相对原运行镜像标注的 `ba779d1`，自身源码只变
 切换前以 SQLite `.backup` 为卷内实际 `prod.db` 建立私有一致性快照 `/root/agent-comm-releases/mention-guide-20260929/backup/prod-verified.db`，`quick_check=ok`，SHA-256 `cb23b6ec2d4116a1d0bda9d3f02cd077cd97d43aaa1bf2007528336900ba4829`；原运行 Web 镜像另标为 `agent-collaboration-deploy-web:rollback-before-3074339`。仅用签名 v2 Compose 组合重建 Web，Nginx 检查后重载。北京时间约 22:20，Web 已运行目标镜像且重启数 0；Platform 与 Nginx 容器启动时间未变。首页、登录、文档及健康检查返回 200；未登录聊天入口返回预期的 307。切换后生产 `prod.db` 首次直接检查遇到短暂锁，稍后使用 10 秒忙等待重试得到 `quick_check=ok`。
 
 内置浏览器在既有账户中实测：聊天输入 `@` 后出现“查看此 Agent 的授权步骤”，链接准确指向该 Agent 的 `/dashboard/connections?agent=…&guide=task-mentions`；到达后步骤已展开，默认预览与执行命令均不含 `--allow-web-actions`，切到“含网页操作”时两条命令才加入该参数。按手机布局尺寸再次查看引导卡；没有运行配对命令、扩大该账户或 Hermes 的权限，也没有发送聊天。此验收证明网页引导和部署生效，不证明该 Agent 已获得事项读取权限。
+
+## 晚间补充：区分方法未列出与已列出但未开放
+
+在该用户连接的实际能力快照中，`task.list`、`task.detail` **未列出**，而“未开放的功能”只列出其它四个方法；这不足以断定单纯重配就能恢复 `@`。Web `21693d1556111a94de7c09abd614d91398f82c03` 的连接引导因此根据最新能力结果明确区分“未列出”（先核对原设备接入组件支持情况）和“已列出但未开放”（核对适配器和配对范围），用户指南与技术参考同步更新。网页仍不自动增权。`npm run build` 无警告通过，文档结构检查仍为 156 个 Markdown、0 错误。
+
+最终 Linux/amd64 Web 镜像为 `sha256:a8670c4616ef636ef1e3268f39fb26d45871f8ef044429f7aa88673b399f77bb`，OCI revision 对应完整 Web 提交。压缩归档 191,473,451 字节，SHA-256 `e46270981e343efca0e9c7bb968cafd1ccfac40f66b9b4a52e6cdff09a04c1bd`，云端重算和 `gzip -t` 通过。二次切换前为当时实时 Web `prod.db` 再做一致性快照 `/root/agent-comm-releases/mention-guide-20260929/backup/prod-before-21693d1.db`，`quick_check=ok`、SHA-256 `aa0c4c4ce0d683fac9122c9a39e8963fe8d43d425e9f0d8a5f81d21e40d72662`，并把第一版 Web 镜像单独标为 `rollback-before-21693d1`。
+
+云端源码当时固定在根 `a4ed3f61a48b0694f7732a3e653f03dbc9e12857` 和 Web `21693d1`；只重建 Web，Nginx 通过配置检查后重载。北京时间 23:12 左右 Web 为最终镜像、`running`、重启数 0；Platform 与 Nginx 容器启动时间未变。首页、登录、文档及 `/healthz` 返回 200，未登录聊天入口返回预期的 307，生产 Web `prod.db` 的 `quick_check=ok`。内置浏览器在该用户连接上实际读到“最近的能力结果未列出 task.list、task.detail”的新版指引和默认基础范围命令。未在用户 Hermes 原设备升级或重配，故当前事项引用权限仍未恢复。切换后服务器根盘约剩余 2.0 GB（使用率 95%）；后续镜像发布应先整理旧产物，同时保留必要的回滚镜像和数据库快照。本段部署记录提交后，服务器根仓库还需同步到该记录的最终 `main` 提交。
