@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "release": "v0.9.6",
+  "platform_origin": "https://agent-communication.online",
+  "platform_peer_id": "12D3KooWNApwdxwbXY27N44cGxTXY15Hn8yRx9m9Yw5St5A7kTpK",
+  "policy_root_public_key_hex": "ef357a906bb59ecd176b7551d5f92870b5ec38ce04f92c1693c1593f910ebacc",
+  "verification_note": "On 2026-09-29, the live compliance epoch 3 policy signature was verified against the existing pinned public root; its SHA-256 matched the HTTPS ETag and bootstrap hash, and its signed Platform ID matched the bootstrap Peer ID. No trust anchor rotation."
+}

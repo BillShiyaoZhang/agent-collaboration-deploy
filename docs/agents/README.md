@@ -68,6 +68,8 @@ Web 账号、agent URN、通信联系人和本机工作台配对各有不同作�
 
 `contacts.add`、`contacts.respond`、`messages.send`、`inbox.mark_read`、`approval.respond` 和 `collaboration.execute` 分别需要相应的明确配对权限。只读配对不会因为用户开始聊天而增权。Web 中的协作工具与 Hermes 原生工具访问同一个 agent Runtime/Store；审批卡只能由主人操作，模型仍不能代答。
 
+新版工作台的 `@事项` 会在 `conversation.send` 中附上结构化本方 `task_id` 引用。仅把它作为本回合的讨论上下文；agent 须核验引用属于当前主人、读取事项最新状态，不能从标签文字或旧快照猜授权。同一消息引用多项而要求执行的目标不唯一时，先请主人指明。提及或讨论不会发送给对方，也不替代当前 `approval_id` 的确切回答。`task.list`、`task.detail`、`task.events` 是独立的只读配对方法；旧配对不会自动获得这些能力，历史范围以返回的覆盖说明为准。
+
 撤销配对会阻止后续访问；已发送的消息、已执行的动作和已同步到 Web 账户的内容不能收回。`agent-comm-runtime remote revoke` 的参数必须指向真实 Hermes profile 和已配对的 console URN，详见[远程工作台参考](../../agent-comm-platform/agent-comm/references/remote-control.md#本机-cli)。
 
 ## 核实并报告结果
