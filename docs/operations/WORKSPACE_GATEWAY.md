@@ -79,6 +79,8 @@ python3 tools/maintenance/backup_workspace_gateway.py \
 
 ## 验证与维护
 
+历史回放修复遵守[数据与控制分离契约](../developers/WORKSPACE_GATEWAY_REPLAY_2026-10-02.md)：控制仍默认 1200/window；活动或最近关闭的合法 WS 数据独立使用每节点 60000 帧及 64 MiB 编码 wire 字节/window。满队列等待最多 WS_SEND_TIMEOUT，真正的队列/发送超时或全局排队字节拒绝隔离相应浏览器 lane，不清除许可或关闭整节点；节点数据预算耗尽则终止 Tunnel，防止持续超额发送。新代码必须单独构建、验证冷浏览器从零回放并部署；不得仅调大控制消息额度或关闭保护。指标包含全局限流及 tunnel_control_rate_rejections / tunnel_data_rate_rejections，配合背压、连接数、预约与实际 RSS 查看。
+
 ```sh
 python3 -m unittest discover -s tools/workspace/tests -v
 python3 tools/workspace/check_ingress.py

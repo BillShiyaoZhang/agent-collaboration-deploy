@@ -2,7 +2,6 @@ import asyncio
 import json
 import sqlite3
 import time
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -219,9 +218,9 @@ def test_resources_global_slots_buffers_and_browser_queue_charge(tmp_path):
     resources.config.queued_bytes = 850
     async def exercise():
         pipe = BrowserPipe(asyncio.get_running_loop().create_future(), resources, 2)
-        pipe.put({"type": "ws.data", "kind": "text", "data": "x"})
+        await pipe.put({"type": "ws.data", "kind": "text", "data": "x"})
         with pytest.raises(ValueError):
-            pipe.put({"type": "ws.data", "kind": "text", "data": "z" * 100})
+            await pipe.put({"type": "ws.data", "kind": "text", "data": "z" * 100})
         assert resources.queued_bytes > 0
         pipe.clear()
         assert resources.queued_bytes == resources.buffer_bytes == 0
@@ -460,7 +459,7 @@ def test_https_host_cookie_and_independent_portal_site(tmp_path):
             assert response.headers["location"] == "/"
 
 
-def test_real_browser_ws_backpressure_closes_tunnel_and_drains_global_queue(tmp_path, monkeypatch):
+def test_real_browser_ws_backpressure_isolates_browser_and_drains_global_queue(tmp_path, monkeypatch):
     from concurrent.futures import ThreadPoolExecutor
     from test_gateway import launch
     app = make_app(tmp_path, browser_queue_size=1, ws_send_timeout=0.1)
@@ -480,8 +479,7 @@ def test_real_browser_ws_backpressure_closes_tunnel_and_drains_global_queue(tmp_
                 assert tunnel.receive_json()["data"] == "ready"
                 active = app.state.tunnels[pair["node_id"]]
                 pipe = active.browser[opened["id"]]
-                # Hold the actual browser socket send; the third upstream frame
-                # fills the one-frame pipe and triggers bounded backpressure.
+                # Hold the actual browser socket send beyond its bounded deadline.
                 from starlette.websockets import WebSocket
                 original = WebSocket.send_text
                 async def blocked(socket, data):
@@ -491,7 +489,13 @@ def test_real_browser_ws_backpressure_closes_tunnel_and_drains_global_queue(tmp_
                 for index in range(4):
                     tunnel.send_json({"type": "ws.data", "id": opened["id"], "kind": "text", "data": str(index)})
                 waiting.result(timeout=3)
-                assert active.closed
+                assert not active.closed
+                tunnel.send_json({"type": "ping"})
+                for _ in range(4):
+                    if tunnel.receive_json()["type"] == "pong":
+                        break
+                else:
+                    raise AssertionError("Slow browser must not close the node tunnel")
             assert app.state.resources.queued_bytes == 0
             assert app.state.resources.counts["ws"] == 0
             assert app.state.resources.metrics["backpressure_closes"] >= 1
@@ -587,7 +591,7 @@ def test_browser_queue_charge_covers_wide_python_text():
     async def exercise():
         pipe = BrowserPipe(asyncio.get_running_loop().create_future(), resources, 2)
         message = {"type": "ws.data", "kind": "text", "data": "\U0001f600" + "x"*1000}
-        pipe.put(message)
+        await pipe.put(message)
         assert resources.queued_bytes >= 4 * len(json.dumps(message, ensure_ascii=False).encode())
         pipe.clear()
         assert resources.buffer_bytes == 0
@@ -613,7 +617,7 @@ def test_mixed_unicode_transport_and_browser_queue_reservations_cover_real_pytho
         assert len(payload.encode("utf-8")) == cfg.frame_limit
         message = {"type": "ws.data", "kind": "text", "data": payload}
         pipe = BrowserPipe(asyncio.get_running_loop().create_future(), resources, 2)
-        pipe.put(message)
+        await pipe.put(message)
         retained = (sys.getsizeof(message) + sys.getsizeof((message, 0))
                     + sys.getsizeof(resources.queued_bytes)
                     + sum(sys.getsizeof(key)+sys.getsizeof(value) for key, value in message.items()))

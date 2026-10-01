@@ -45,5 +45,7 @@ cd agent-collaboration-deploy
 
 ## Ambient Workspace 联调
 
+- [历史回放与浏览器连接隔离](WORKSPACE_GATEWAY_REPLAY_2026-10-02.md)：控制与数据独立额度、有界异步队列、单连接背压隔离；源码建议不等于已部署。
+
 - [云端实现与 Ambient 交接（2026-10-01）](AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)：账户接入码、客户端适配、固定子模块及验收要求；实际启用状态以发布记录为准。
 - [长期授权建议（2026-10-02，尚未部署）](AMBIENT_UNTIL_REVOKED_PROPOSAL_2026-10-02.md)：显式 until_revoked、无凭证能力检测、保留本机批准与短浏览器会话；[隔离验证](../verification/WORKSPACE_UNTIL_REVOKED_2026-10-02.md)。

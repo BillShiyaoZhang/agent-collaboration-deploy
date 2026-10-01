@@ -63,7 +63,8 @@ All configuration fields map to WORKSPACE_GATEWAY_ plus the uppercase field, exc
 | ENROLLMENT_TTL / PAIRING_TTL | 300 / 300 | Token / approval deadline seconds |
 | MAX_LAUNCHES / MAX_SESSIONS / MAX_NODE_SESSIONS | 1000 / 10000 / 100 | Live ticket / session records |
 | SOURCE_RATE / ACCOUNT_RATE / ACCOUNT_READ_RATE | 10 / 20 / 120 | Anonymous pair source / account mutation and pairing categories / reads per window |
-| DEVICE_RATE / DEVICE_STATE_RATE / TUNNEL_RATE | 60 / 120 / 1200 | Device actions+reconnect / polling / tunnel messages per window |
+| DEVICE_RATE / DEVICE_STATE_RATE / TUNNEL_RATE | 60 / 120 / 1200 | Device actions+reconnect / polling / tunnel control messages per window |
+| TUNNEL_DATA_RATE / TUNNEL_DATA_BYTES | 60000 / 67108864 | Bound, validated WS data frames / encoded tunnel-wire bytes per node per window |
 | RATE_WINDOW / SOURCE_ENTRIES / RATE_ENTRIES | 60 / 1024 / 2048 | Window seconds / bounded counter keys |
 | AUDIT_MAX_ROWS / HISTORY_MAX_ROWS | 10000 / 10000 | Historical row caps |
 | AUDIT_RETENTION / HISTORY_RETENTION | 604800 / 604800 | Retention seconds |
@@ -82,5 +83,7 @@ Temporary mode requires the reviewed Web version with production __Host- authent
 Validation uses the vendored [official Public Suffix List](https://publicsuffix.org/list/) (ICANN+PRIVATE, MPL-2.0) with IDNA, wildcard and exception rules; unknown suffixes fail closed. Localhost is the explicit HTTP development exception.
 
 ## Verification scope
+
+The replay-isolation contract separates control messages from bound, validated ws.data. Control flooding, unknown correlations and invalid/oversized frames remain restricted; reconnecting does not reset either node data quota. Browser queue insertion waits for bounded queue space for at most WS_SEND_TIMEOUT, with pending messages charged to the global byte budgets. A queue/send timeout or global queued-byte rejection closes only the offending browser lane and notifies its connector. Other lanes, HTTP and ping retain the same node authorization. Exhausting the node data-frame/byte budget closes the tunnel to stop continued over-quota parsing. Each tunnel remembers at most 256 closed correlations for one rate window, validating and charging legitimate in-flight data before discarding it. Cancellation/revocation drains queued and pending charges. See the [replay proposal](../docs/developers/WORKSPACE_GATEWAY_REPLAY_2026-10-02.md); publishing this code requires its own image and workload verification.
 
 Isolated SQLite, real ASGI receive/send, fake connectors and TestClient HTTP/WS cover enrollment replay/account binding, capacity recovery, audit idempotency/retention, legacy identity migration, pagination, slow upload/response send, disconnect/cancel, node/global/buffer quotas, HTTPS cookie attributes, fixed Frame assets and live WS backpressure. They do not prove real Ambient browser integration or production TLS. Record those after Ambient implements enrollment UI and Connector admission.

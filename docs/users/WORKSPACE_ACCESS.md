@@ -1,5 +1,7 @@
 # Ambient 本机工作区远程入口
 
+连接恢复可能需要回放历史事件。新版传输建议允许正常浏览器在有界队列中完成回放；真正过慢或排队超额的单个页面连接会被关闭，已有设备许可保留，其他连接继续。节点整体超过数据帧/字节预算则断开节点隧道，设备许可仍保留。具体启用状态以部署验证为准，详见[Gateway 运维](../operations/WORKSPACE_GATEWAY.md)。
+
 Ambient 已完成[接口适配](../developers/AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)；当前公网启用情况见[发布记录](../releases/WORKSPACE_TEMPORARY_SUBDOMAIN_2026-10-01.md)。云门户可打开用户自己的 Ambient；Agent、App 数据、密钥和任务执行仍在用户电脑。完整工作区授权与普通 Agent Comm 对话授权分别确认。
 
 1. 登录目标云账户，在工作区入口主动生成本机接入码。码五分钟后失效，只能使用一次。

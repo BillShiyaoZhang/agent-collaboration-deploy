@@ -13,6 +13,7 @@ import time
 import hmac
 import ipaddress
 import math
+from collections import OrderedDict
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, UTC
@@ -89,6 +90,8 @@ class GatewayConfig:
     device_state_rate: int = 120
     device_rate: int = 60
     tunnel_rate: int = 1200
+    tunnel_data_rate: int = 60000
+    tunnel_data_bytes: int = 64 * 1024 * 1024
     tunnel_idle_timeout: float = 90.0
     max_launches: int = 1000
     max_sessions: int = 10000
@@ -286,32 +289,70 @@ class Store:
         self.db.execute("PRAGMA incremental_vacuum(256)")
 
 
+class BrowserBackpressure(ValueError):
+    pass
+
+
 @dataclass
 class BrowserPipe:
     accepted: asyncio.Future
     resources: Resources
     maximum: int
     queue: asyncio.Queue = field(init=False)
+    closed: bool = False
+    pending_puts: set[asyncio.Task] = field(default_factory=set)
+    backpressure_reported: bool = False
 
     def __post_init__(self):
         self.queue = asyncio.Queue(maxsize=self.maximum)
 
-    def put(self, message):
-        if self.queue.full():
+    def mark_backpressure(self):
+        if not self.backpressure_reported:
             self.resources.metrics["backpressure_closes"] += 1
-            raise ValueError("Browser WebSocket backpressure quota exceeded")
+            self.backpressure_reported = True
+
+    async def put(self, message):
+        if self.closed:
+            return False
         size = 4 * len(json.dumps(message, separators=(",", ":"), ensure_ascii=False).encode()) + 512
-        self.resources.queue_charge(size)
-        self.queue.put_nowait((message, size))
+        try:
+            self.resources.queue_charge(size)
+        except ValueError as exc:
+            self.backpressure_reported = True  # queue_charge counted this rejection.
+            raise BrowserBackpressure("Global browser queue capacity reached") from exc
+        pending = asyncio.create_task(self.queue.put((message, size)))
+        self.pending_puts.add(pending)
+        try:
+            await asyncio.wait_for(pending, self.resources.config.ws_send_timeout)
+            return not self.closed
+        except TimeoutError as exc:
+            self.mark_backpressure()
+            raise BrowserBackpressure("Browser WebSocket queue timed out") from exc
+        except asyncio.CancelledError:
+            # Shutdown cancels its queue insertion, but external task cancellation
+            # must still terminate the connector receive loop.
+            if self.closed and not asyncio.current_task().cancelling():
+                return False
+            raise
+        finally:
+            if not pending.done():
+                pending.cancel()
+            await asyncio.gather(pending, return_exceptions=True)
+            self.pending_puts.discard(pending)
+            if pending.cancelled() or pending.exception() is not None:
+                self.resources.queue_release(size)
 
     def clear(self):
         while not self.queue.empty():
             _, size = self.queue.get_nowait()
             self.resources.queue_release(size)
 
-    def shutdown(self, revoked, reason):
+    def shutdown(self, revoked, reason, *, code=None):
+        self.closed = True
+        for pending in list(self.pending_puts):
+            pending.cancel()
         self.clear()
-        self.queue.put_nowait(({"type": "ws.close", "code": 1008 if revoked else 1012, "reason": reason}, 0))
+        self.queue.put_nowait(({"type": "ws.close", "code": code or (1008 if revoked else 1012), "reason": reason}, 0))
 
 
 @dataclass
@@ -324,6 +365,20 @@ class Tunnel:
     browser: dict[str, BrowserPipe] = field(default_factory=dict)
     closed: bool = False
     send_timeout: float = 10
+    recently_closed: OrderedDict[str, float] = field(default_factory=OrderedDict)
+
+    def remember_browser(self, correlation, stamp, ttl):
+        self.was_closed(correlation, stamp)
+        self.recently_closed.pop(correlation, None)
+        while len(self.recently_closed) >= 256:
+            self.recently_closed.popitem(last=False)
+        self.recently_closed[correlation] = stamp + ttl
+
+    def was_closed(self, correlation, stamp):
+        for existing, until in list(self.recently_closed.items()):
+            if until <= stamp:
+                self.recently_closed.pop(existing)
+        return correlation in self.recently_closed
 
     async def send(self, message, authorize=None):
         async with asyncio.timeout(self.send_timeout):
@@ -346,6 +401,7 @@ class Tunnel:
             with contextlib.suppress(Exception):
                 await asyncio.wait_for(self.send({"type": "revoked", "reason": reason}), timeout=1)
         self.closed = True
+        self.recently_closed.clear()
         for future in list(self.http.values()):
             if not future.done():
                 future.set_exception(HTTPException(503, reason))
@@ -452,6 +508,8 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
     sources = RateTable(config.source_entries, config.rate_window)
     accounts = RateTable(config.rate_entries, config.rate_window)
     devices = RateTable(config.rate_entries, config.rate_window)
+    data_frames = RateTable(config.rate_entries, config.rate_window)
+    data_bytes = RateTable(config.rate_entries, config.rate_window)
     proxies = [ipaddress.ip_network(item.strip()) for item in config.trusted_proxy_cidrs.split(",") if item.strip()]
     cookie_name = SECURE_COOKIE if config.scheme == "https" else COOKIE
 
@@ -1016,21 +1074,54 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
             if previous:
                 await previous.close("Connector replaced by a new connection")
             tunnels[node["node_id"]] = tunnel
+
+            async def isolate_browser(correlation, pipe, reason):
+                if tunnel.browser.get(correlation) is not pipe:
+                    return
+                tunnel.browser.pop(correlation)
+                tunnel.remember_browser(correlation, now(), config.rate_window)
+                if not pipe.accepted.done():
+                    pipe.accepted.set_exception(HTTPException(429, reason))
+                pipe.shutdown(False, reason, code=1008)
+                await tunnel.send({"type": "ws.close", "id": correlation, "code": 1008, "reason": reason})
+
             try:
                 store.db.execute("UPDATE nodes SET last_seen=? WHERE node_id=?", (now(), node["node_id"]))
                 store.audit(now(), "online", node)
                 await tunnel.send({"type": "hello", **identity(node)})
                 while True:
                     wire = await asyncio.wait_for(socket.receive_text(), config.tunnel_idle_timeout)
-                    if not devices.allow(node["node_id"] + "wire", now(), config.tunnel_rate):
-                        raise ValueError("Tunnel message rate exceeded")
-                    if len(wire.encode()) > config.http_limit * 4 // 3 + 65536:
+                    wire_bytes = len(wire.encode())
+                    if wire_bytes > config.http_limit * 4 // 3 + 65536:
                         raise ValueError("Tunnel message exceeds quota")
                     message = json.loads(wire)
                     if not isinstance(message, dict):
                         raise ValueError("Invalid tunnel message")
                     valid_node(store.node(node["node_id"]))
                     kind, correlation = message.get("type"), message.get("id")
+                    if correlation is not None and not isinstance(correlation, str):
+                        raise ValueError("Invalid tunnel correlation")
+                    if kind == "ws.data":
+                        if message.get("kind") == "bytes":
+                            decode_body(message.get("data"), config.frame_limit)
+                        elif (message.get("kind") != "text" or not isinstance(message.get("data"), str)
+                              or len(message["data"].encode()) > config.frame_limit):
+                            raise ValueError("Invalid WebSocket frame")
+                    stamp = now()
+                    pipe = tunnel.browser.get(correlation)
+                    closed_browser = tunnel.was_closed(correlation, stamp)
+                    if kind == "ws.data" and (pipe is not None or closed_browser):
+                        if (not data_frames.allow(node["node_id"], stamp, config.tunnel_data_rate)
+                                or not data_bytes.allow(node["node_id"], stamp, config.tunnel_data_bytes, cost=wire_bytes)):
+                            resources.metrics["rate_rejections"] += 1
+                            resources.metrics["tunnel_data_rate_rejections"] += 1
+                            raise ValueError("Node WebSocket data quota exceeded")
+                        if closed_browser:
+                            continue
+                    elif not devices.allow(node["node_id"] + "wire", stamp, config.tunnel_rate):
+                        resources.metrics["rate_rejections"] += 1
+                        resources.metrics["tunnel_control_rate_rejections"] += 1
+                        raise ValueError("Tunnel control message rate exceeded")
                     if kind == "ping":
                         store.db.execute("UPDATE nodes SET last_seen=? WHERE node_id=?", (now(), node["node_id"]))
                         await tunnel.send({"type": "pong"})
@@ -1053,19 +1144,13 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
                             if not pipe.accepted.done():
                                 pipe.accepted.set_result(message.get("subprotocol"))
                         else:
-                            if kind == "ws.data":
-                                if message.get("kind") == "bytes":
-                                    decode_body(message.get("data"), config.frame_limit)
-                                elif (
-                                    message.get("kind") != "text"
-                                    or not isinstance(message.get("data"), str)
-                                    or len(message["data"].encode()) > config.frame_limit
-                                ):
-                                    raise ValueError("Invalid WebSocket frame")
                             cleaned = ({"type": "ws.data", "kind": message["kind"], "data": message["data"]}
                                        if kind == "ws.data" else {"type": "ws.close", "code": message.get("code", 1000),
                                                                 "reason": str(message.get("reason", ""))[:100]})
-                            pipe.put(cleaned)
+                            try:
+                                await pipe.put(cleaned)
+                            except BrowserBackpressure:
+                                await isolate_browser(correlation, pipe, "Browser WebSocket backpressure quota exceeded")
                     elif kind not in {"http.response", "ws.accept", "ws.data", "ws.close", "pong"}:
                         raise ValueError("Unknown tunnel message type")
             except (WebSocketDisconnect, RuntimeError):
@@ -1190,9 +1275,14 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
                     await socket.close(code=code, reason=str(message.get("reason", ""))[:100])
                     return
                 if message["kind"] == "text":
-                    await asyncio.wait_for(socket.send_text(message["data"]), config.ws_send_timeout)
+                    sending = socket.send_text(message["data"])
                 else:
-                    await asyncio.wait_for(socket.send_bytes(decode_body(message["data"], config.frame_limit)), config.ws_send_timeout)
+                    sending = socket.send_bytes(decode_body(message["data"], config.frame_limit))
+                try:
+                    await asyncio.wait_for(sending, config.ws_send_timeout)
+                except TimeoutError:
+                    pipe.mark_backpressure()
+                    raise
 
             async def expiry_guard():
                 while True:
@@ -1216,13 +1306,15 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
         finally:
             resources.release(lease)
             if pipe:
-                pipe.clear()
+                pipe.shutdown(False, "Browser disconnected", code=1000)
                 if not pipe.accepted.done():
                     pipe.accepted.cancel()
                 elif not pipe.accepted.cancelled():
                     pipe.accepted.exception()
             if tunnel and correlation:
                 tunnel.browser.pop(correlation, None)
+                if not tunnel.closed:
+                    tunnel.remember_browser(correlation, now(), config.rate_window)
                 if accepted:
                     store.audit(now(), "ws.close", node)
                 if not tunnel.closed:

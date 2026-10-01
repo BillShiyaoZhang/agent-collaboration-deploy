@@ -5,7 +5,7 @@ from collections import OrderedDict, defaultdict
 from dataclasses import dataclass
 
 from fastapi import HTTPException
-from .domains import registrable_domain, validate_origins
+from .domains import registrable_domain as registrable_domain, validate_origins as validate_origins
 
 
 class RateTable:
@@ -13,7 +13,7 @@ class RateTable:
         self.maximum, self.window = maximum, window
         self.entries = OrderedDict()
 
-    def allow(self, key, now, limit):
+    def allow(self, key, now, limit, *, cost=1):
         # Fixed-window counters, bounded keys. Never evict live sources to let an
         # attacker rotate addresses and erase another source's quota.
         for existing, (_, until) in list(self.entries.items()):
@@ -24,9 +24,11 @@ class RateTable:
                 return False
             self.entries[key] = (0, now + self.window)
         count, until = self.entries[key]
-        if count >= limit:
+        if not isinstance(cost, int) or isinstance(cost, bool) or cost <= 0:
+            raise ValueError("Rate cost must be a positive integer")
+        if count + cost > limit:
             return False
-        self.entries[key] = (count + 1, until)
+        self.entries[key] = (count + cost, until)
         return True
 
 
@@ -47,7 +49,8 @@ class Resources:
         self.buffer_bytes = 0
         self.queued_bytes = 0
         self.metrics = {"capacity_rejections": 0, "rate_rejections": 0,
-                        "body_timeouts": 0, "backpressure_closes": 0}
+                        "body_timeouts": 0, "backpressure_closes": 0,
+                        "tunnel_control_rate_rejections": 0, "tunnel_data_rate_rejections": 0}
 
     def acquire(self, kind, node=None):
         cfg = self.config
