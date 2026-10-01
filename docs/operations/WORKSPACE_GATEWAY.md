@@ -1,6 +1,6 @@
 # Ambient Workspace Gateway 运维
 
-适用于 `main` 中的可选 Workspace 组件。Ambient 侧已按[交接契约](../developers/AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)完成适配，独立结果见[验收记录](../verification/AMBIENT_WORKSPACE_ACCEPTANCE_2026-10-01.md)。当前代码支持独立注册域名及显式临时子域名两种模式；是否已启用以[发布记录](../releases/AMBIENT_WORKSPACE_DEPLOYMENT_2026-10-01.md)为准。原平台、Web 身份、数据库、NEXTAUTH_SECRET 与 v2 签名策略均须保留。只更新源码不能声称生产已启用。
+适用于 `main` 中的可选 Workspace 组件。Ambient 侧已按[交接契约](../developers/AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)完成适配，独立结果见[验收记录](../verification/AMBIENT_WORKSPACE_ACCEPTANCE_2026-10-01.md)。当前代码支持独立注册域名及显式临时子域名两种模式；是否已启用以[发布记录](../releases/WORKSPACE_TEMPORARY_SUBDOMAIN_2026-10-01.md)为准。原平台、Web 身份、数据库、NEXTAUTH_SECRET 与 v2 签名策略均须保留。只更新源码不能声称生产已启用。
 
 ## 域名、证书与配置
 
@@ -15,7 +15,7 @@
 
 此选项要求支持 Fetch Metadata 与 `__Host-` 的现代浏览器。从工作区页面直接点击门户链接会被拒绝，请使用地址栏或书签回门户。同站恶意页面仍可能写入大量父域 Cookie，造成 Cookie 额度/请求头耗尽和重新登录；临时模式的可用性隔离弱于独立注册域名。稳定运行后切换 `separate-site`。替换示例域名，不把占位值当发布配置。
 
-将[变量模板](../../deploy/workspace.env.example)合入服务器原私有 .env，生成独立 WORKSPACE_GATEWAY_SECRET（例如 openssl rand -hex 32）。控制和节点 DNS 指向入口服务器。申请包含控制 Host 与 *.节点域名的可信 TLS 证书；wildcard 使用 DNS-01。DNS服务凭据、私钥和真实 .env 不进入源码。
+本次现网采用独立私有workspace.env，保留原.env；完整双env/五配置文件组合见[发布记录](../releases/WORKSPACE_TEMPORARY_SUBDOMAIN_2026-10-01.md)。以下为一般自部署模板。将[变量模板](../../deploy/workspace.env.example)合入服务器原私有 .env，生成独立 WORKSPACE_GATEWAY_SECRET（例如 openssl rand -hex 32）。控制和节点 DNS 指向入口服务器。申请包含控制 Host 与 *.节点域名的可信 TLS 证书；wildcard 使用 DNS-01。DNS服务凭据、私钥和真实 .env 不进入源码。
 
 | 变量 | 用途 |
 | --- | --- |
@@ -85,3 +85,30 @@ python3 tools/maintenance/check_structure.py
 Ingress测试用合成证书与隔离Docker服务，不替代真实公网TLS。实际环境/结果见[验证记录](../verification/WORKSPACE_GATEWAY_CLOUD_2026-10-01.md)。发布后须真实验证登录与新接入、原paired身份、双向HTTP/WS、撤销/到期/删除关闭连接、无效Host、账户API不公开、代理头覆盖、资源拒绝与恢复，以及原Agent Comm/v2功能仍可用。
 
 证书续期使用原DNS-01方法。人工 DNS hook 的证书不能靠原 webroot timer 自动续期；须在到期前重新完成 DNS-01，或配置受限 DNS API hook。成功续期后安全复制实际证书和私钥到挂载目录，重新运行renderer核对，然后nginx -t/reload；已有只读目录挂载无需为文件更新重建容器。复制与reload之间避免中间配置生效，私钥保持受限权限。新增证书续期不能假设门户原webroot续期自动覆盖wildcard。
+
+### 本次人工wildcard续期
+
+本次证书到期 `2026-12-30T10:01:43Z`，须提前续期。服务器独立ACME目录及hook已保留，原门户webroot timer不会自动处理它。到续期窗口，在独立管理终端中执行：
+
+```sh
+certbot renew --cert-name ambient-workspace-temp --non-interactive \
+  --config-dir /root/agent-comm-releases/workspace-samesite-20261001/acme/config \
+  --work-dir /root/agent-comm-releases/workspace-samesite-20261001/acme/work \
+  --logs-dir /root/agent-comm-releases/workspace-samesite-20261001/acme/logs
+```
+
+hook生成新 `acme/pending-challenge.json` 后，读取当次TXT，更新阿里DNS `_acme-challenge.workspace`，保留其他TXT；当次值不能复用旧验证值。hook等待两小时，并要求两个权威NS连续两次匹配；保留终端直到Certbot退出并检查实际续期成功。未到续期窗口而没有新订单不表示证书已更新。
+
+成功后将 `acme/config/live/ambient-workspace-temp/fullchain.pem`、`privkey.pem` 解引用复制为 `cert-control/`、`cert-node/` 中的实际文件，私钥0600/目录0700；使用同release的 `renderer.env` 重新运行renderer校验。服务器Python3.6不满足renderer要求，应使用已加载的Gateway镜像Python及受限bind挂载，执行以下命令；不得把renderer.env打印或复制到公开目录：
+
+```sh
+docker run --rm --pull never --network none --user 0 --read-only \
+  --cap-drop ALL --security-opt no-new-privileges:true --memory 128m \
+  --mount type=bind,src=/root/agent-collaboration-deploy,dst=/source,readonly \
+  --mount type=bind,src=/root/agent-comm-releases/workspace-samesite-20261001,dst=/root/agent-comm-releases/workspace-samesite-20261001 \
+  --entrypoint python agent-collaboration-deploy-workspace-gateway:samesite-hotfix-152dea9 \
+  /source/tools/workspace/render_ingress.py \
+  --env-file /root/agent-comm-releases/workspace-samesite-20261001/renderer.env
+```
+
+确认SAN、密钥、有效期及配置正确后，执行 `docker exec agent-nginx nginx -t` 和 `docker exec agent-nginx nginx -s reload`，再从外部检查control与node实际证书。原Portal证书与timer保持原流程。尚未配置DNS API或自动续期；本次没有创建定时任务。

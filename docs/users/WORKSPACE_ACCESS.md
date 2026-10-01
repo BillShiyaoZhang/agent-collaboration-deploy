@@ -1,6 +1,6 @@
 # Ambient 本机工作区远程入口
 
-Ambient 已完成[接口适配](../developers/AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)；当前公网启用情况见[发布记录](../releases/AMBIENT_WORKSPACE_DEPLOYMENT_2026-10-01.md)。云门户可打开用户自己的 Ambient；Agent、App 数据、密钥和任务执行仍在用户电脑。完整工作区授权与普通 Agent Comm 对话授权分别确认。
+Ambient 已完成[接口适配](../developers/AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)；当前公网启用情况见[发布记录](../releases/WORKSPACE_TEMPORARY_SUBDOMAIN_2026-10-01.md)。云门户可打开用户自己的 Ambient；Agent、App 数据、密钥和任务执行仍在用户电脑。完整工作区授权与普通 Agent Comm 对话授权分别确认。
 
 1. 登录目标云账户，在工作区入口主动生成本机接入码。码五分钟后失效，只能使用一次。
 2. 在自己的 Ambient 远程设置中填写公开 Gateway、门户地址和接入码，选择期限与权限并开始连接。`workspace.control` 可读写工作区并执行任务；附加 `workspace.manage` 才可管理 Provider、Coding Agent、Skill 和 capability。

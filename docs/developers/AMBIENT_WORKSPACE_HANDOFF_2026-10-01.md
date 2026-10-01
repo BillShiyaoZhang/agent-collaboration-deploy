@@ -1,8 +1,14 @@
 # Ambient Workspace：云端实现与本机交接（2026-10-01）
 
-本契约承接[原提案](../architecture/WORKSPACE_GATEWAY_PROPOSAL.md)和[审查结论](../architecture/WORKSPACE_GATEWAY_REVIEW_2026-10-01.md)。原交接分支已合入 `main` 并删除，Ambient 已完成下述适配及独立联调，见[验收记录](../verification/AMBIENT_WORKSPACE_ACCEPTANCE_2026-10-01.md)。Web 与云端支持默认独立注册域和显式临时子域部署；实际服务器状态见[发布记录](../releases/AMBIENT_WORKSPACE_DEPLOYMENT_2026-10-01.md)。以下协议与验收要求继续有效，隔离联调不能代替公网验收。
+本契约承接[原提案](../architecture/WORKSPACE_GATEWAY_PROPOSAL.md)和[审查结论](../architecture/WORKSPACE_GATEWAY_REVIEW_2026-10-01.md)。原交接分支已合入 `main` 并删除，Ambient 已完成下述适配及独立联调，见[验收记录](../verification/AMBIENT_WORKSPACE_ACCEPTANCE_2026-10-01.md)。Web 与云端支持默认独立注册域和显式临时子域部署；实际服务器状态见[发布记录](../releases/WORKSPACE_TEMPORARY_SUBDOMAIN_2026-10-01.md)。以下协议与验收要求继续有效，隔离联调不能代替公网验收。
 
 Agent、App、Provider 密钥、文件与 Run 由用户电脑上的 Ambient 持有和执行。云门户持有账户，Gateway 持有授权及审计元数据并中转有界 HTTP/WS。恢复连接后读取原 Run 的真实状态，网络错误不能自动变成再次执行请求。
+
+## 本次公网交接
+
+2026-10-01已启用临时子域名，部署及合成公网验收详见[本次发布记录](../releases/WORKSPACE_TEMPORARY_SUBDOMAIN_2026-10-01.md)。Ambient 用户填写：门户 `https://agent-communication.online`，Gateway `https://gateway.workspace.agent-communication.online`；从门户 `/connect-workspace` 或 `/dashboard/workspaces` 主动生成接入码，按下述流程在本机确认。服务秘密及内部URL不交给Ambient。
+
+Gateway代码固定 `152dea974f09e5dbca4d0da16867df1be9d3395e`，Web固定版本如下。HTTPS配对/Tunnel/HTTP/WS及撤销通过独立合成节点验收；真实用户的Ambient/Widget/四WS/模型和Run仍须在自己的设备验收。首次使用重新登录一次；用地址栏或书签回门户。用户现场验收只生成自己账户的新接入码，不重用发布测试账号、票据或节点。
 
 ## 获取源码
 
