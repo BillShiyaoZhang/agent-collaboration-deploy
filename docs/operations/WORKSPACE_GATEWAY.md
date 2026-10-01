@@ -33,7 +33,9 @@ renderer 验证域名、私网、证书 SAN、密钥匹配和至少24小时剩�
 
 ## 构建、发布与回退
 
-本次任务只提供分支，未执行以下发布动作。完成 Ambient 联调后，从固定父仓库与子模块版本在足够内存的 Linux/amd64 主机离线构建 Web/Gateway 镜像，保存镜像ID、源码修订和SHA-256；不要在现有小内存ECS执行Web next build。依[部署指南](DEPLOYMENT.md)备份现有Web/Platform及身份，上传镜像并校验，再按完整overlay组合发布。
+从固定父仓库与子模块版本在足够内存的 Linux/amd64 主机离线构建 Web/Gateway 镜像，保存镜像ID、源码修订和SHA-256；不要在现有小内存ECS执行Web next build。依[部署指南](DEPLOYMENT.md)备份现有Web/Platform及身份，上传镜像并校验，再按完整overlay组合发布。带日期的发布记录说明实际启用状态。
+
+默认应用预约预算为 256 MiB（`WORKSPACE_GATEWAY_BUFFER_BYTES=268435456`），容器上限仍为 384 MiB。Ambient 完整页面同时使用三条聊天 WS 和一条 Widget WS；此前 128 MiB 配置会拒绝第三条 WS。2026-10-01 的 Ambient 隔离验收在 256 MiB 下完成一个 Tunnel、四条浏览器 WS 与页面加载，Windows Gateway 工作集峰值约 61 MB。预约预算不是 RSS 上限，这份短时验收也不证明 Linux 满队列或多节点容量；上线监看实际 RSS、OOM、预约及背压，超额拒绝不得靠清空节点身份恢复。
 
 ```sh
 docker compose -f docker-compose.yml -f docker-compose.v2.yml \
