@@ -1,0 +1,25 @@
+# Optional local/proposal overlay: docker compose -f docker-compose.yml -f docker-compose.workspace.yml up --build
+# Production requires a dedicated HTTPS wildcard ingress preserving the workspace Host.
+services:
+  workspace-gateway:
+    build:
+      context: ./workspace-gateway
+    environment:
+      WORKSPACE_GATEWAY_SECRET: ${WORKSPACE_GATEWAY_SECRET:?Set a separate Workspace Gateway service secret}
+      WORKSPACE_GATEWAY_DOMAIN: ${WORKSPACE_GATEWAY_DOMAIN:-localhost:8090}
+      WORKSPACE_GATEWAY_SCHEME: ${WORKSPACE_GATEWAY_SCHEME:-http}
+    volumes:
+      - workspace_gateway_data:/data
+    ports:
+      - "127.0.0.1:8090:8090"
+    networks:
+      - agent-net
+    restart: unless-stopped
+  web:
+    environment:
+      WORKSPACE_GATEWAY_URL: http://workspace-gateway:8090
+      WORKSPACE_GATEWAY_SECRET: ${WORKSPACE_GATEWAY_SECRET:?Set a separate Workspace Gateway service secret}
+    depends_on:
+      - workspace-gateway
+volumes:
+  workspace_gateway_data:
