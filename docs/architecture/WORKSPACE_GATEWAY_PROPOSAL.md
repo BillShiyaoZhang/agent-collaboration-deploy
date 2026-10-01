@@ -1,6 +1,6 @@
 # Ambient Workspace Gateway（独立合并建议）
 
-此功能只在独立提案检出中开发，不改变上游仓库或现有 Agent Comm 控制协议。Ambient 仍拥有本地工作区、Agent、App、密钥和 Run；新 Gateway 只中转有界 HTTP/WebSocket，持久化连接授权及审计元数据，不存业务正文、不重派任务。
+此功能作为独立建议分支发布，未合入上游 main，不改变现有 Agent Comm 控制协议。Ambient 仍拥有本地工作区、Agent、App、密钥和 Run；新 Gateway 只中转有界 HTTP/WebSocket，持久化连接授权及审计元数据，不存业务正文、不重派任务。
 
 ## 首版连接流程
 
