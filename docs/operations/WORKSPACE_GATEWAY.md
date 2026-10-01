@@ -1,6 +1,6 @@
 # Ambient Workspace Gateway 运维（联调分支）
 
-适用于 `codex/ambient-workspace-review-20261001`，尚未上线。Ambient 侧适配和真实联调见[交接](../developers/AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)。原平台、Web身份、数据库、NEXTAUTH_SECRET 与 v2 签名策略均须保留。只更新源码不能声称生产已更新。
+适用于 `main` 中的可选 Workspace 组件。Ambient 侧已按[交接契约](../developers/AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)完成适配，独立结果见[验收记录](../verification/AMBIENT_WORKSPACE_ACCEPTANCE_2026-10-01.md)。当前 Web 已升级，Workspace 公网入口待独立域名、DNS 与 TLS；实际状态见[发布记录](../releases/AMBIENT_WORKSPACE_DEPLOYMENT_2026-10-01.md)。原平台、Web 身份、数据库、NEXTAUTH_SECRET 与 v2 签名策略均须保留。只更新源码不能声称生产已启用。
 
 ## 域名、证书与配置
 

@@ -1,15 +1,15 @@
 # Ambient Workspace：云端实现与本机交接（2026-10-01）
 
-本交接对应部署仓库和 Web 子模块的 `codex/ambient-workspace-review-20261001` 分支，承接[原提案](../architecture/WORKSPACE_GATEWAY_PROPOSAL.md)和[审查结论](../architecture/WORKSPACE_GATEWAY_REVIEW_2026-10-01.md)。本次没有合入 main、修改生产服务器或发布 Ambient。Ambient 侧尚需按下述契约适配；云端隔离测试不等于真实工作区联调完成。
+本契约承接[原提案](../architecture/WORKSPACE_GATEWAY_PROPOSAL.md)和[审查结论](../architecture/WORKSPACE_GATEWAY_REVIEW_2026-10-01.md)。原交接分支已合入 `main` 并删除，Ambient 已完成下述适配及独立联调，见[验收记录](../verification/AMBIENT_WORKSPACE_ACCEPTANCE_2026-10-01.md)。Web 已升级，Workspace 公网入口仍待独立域名、DNS 与 TLS；实际服务器状态见[发布记录](../releases/AMBIENT_WORKSPACE_DEPLOYMENT_2026-10-01.md)。以下协议与验收要求继续有效，隔离联调不能代替公网验收。
 
 Agent、App、Provider 密钥、文件与 Run 由用户电脑上的 Ambient 持有和执行。云门户持有账户，Gateway 持有授权及审计元数据并中转有界 HTTP/WS。恢复连接后读取原 Run 的真实状态，网络错误不能自动变成再次执行请求。
 
 ## 获取源码
 
-[部署仓库交接分支](https://github.com/BillShiyaoZhang/agent-collaboration-deploy/tree/codex/ambient-workspace-review-20261001)固定 Web 提交 `fa55096cc66f88f17f1b6191a5bc41d046cd08e8`（[Web分支](https://github.com/BillShiyaoZhang/agent-collaboration-web/tree/codex/ambient-workspace-review-20261001)）。Web 是独立仓库，不要通过 `submodule update --remote` 选择另一版本。
+[部署仓库 main](https://github.com/BillShiyaoZhang/agent-collaboration-deploy/tree/main)固定 Web 提交 `fa55096cc66f88f17f1b6191a5bc41d046cd08e8`（[Web 固定代码](https://github.com/BillShiyaoZhang/agent-collaboration-web/tree/fa55096cc66f88f17f1b6191a5bc41d046cd08e8)）。Web 是独立仓库，不要通过 `submodule update --remote` 选择另一版本。
 
 ```sh
-git clone --branch codex/ambient-workspace-review-20261001 --recurse-submodules \
+git clone --branch main --recurse-submodules \
   https://github.com/BillShiyaoZhang/agent-collaboration-deploy.git
 cd agent-collaboration-deploy
 git submodule update --init --recursive
