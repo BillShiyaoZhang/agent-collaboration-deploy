@@ -1,12 +1,12 @@
 # Ambient Workspace：云端实现与本机交接（2026-10-01）
 
-本契约承接[原提案](../architecture/WORKSPACE_GATEWAY_PROPOSAL.md)和[审查结论](../architecture/WORKSPACE_GATEWAY_REVIEW_2026-10-01.md)。原交接分支已合入 `main` 并删除，Ambient 已完成下述适配及独立联调，见[验收记录](../verification/AMBIENT_WORKSPACE_ACCEPTANCE_2026-10-01.md)。Web 已升级，Workspace 公网入口仍待独立域名、DNS 与 TLS；实际服务器状态见[发布记录](../releases/AMBIENT_WORKSPACE_DEPLOYMENT_2026-10-01.md)。以下协议与验收要求继续有效，隔离联调不能代替公网验收。
+本契约承接[原提案](../architecture/WORKSPACE_GATEWAY_PROPOSAL.md)和[审查结论](../architecture/WORKSPACE_GATEWAY_REVIEW_2026-10-01.md)。原交接分支已合入 `main` 并删除，Ambient 已完成下述适配及独立联调，见[验收记录](../verification/AMBIENT_WORKSPACE_ACCEPTANCE_2026-10-01.md)。Web 与云端支持默认独立注册域和显式临时子域部署；实际服务器状态见[发布记录](../releases/AMBIENT_WORKSPACE_DEPLOYMENT_2026-10-01.md)。以下协议与验收要求继续有效，隔离联调不能代替公网验收。
 
 Agent、App、Provider 密钥、文件与 Run 由用户电脑上的 Ambient 持有和执行。云门户持有账户，Gateway 持有授权及审计元数据并中转有界 HTTP/WS。恢复连接后读取原 Run 的真实状态，网络错误不能自动变成再次执行请求。
 
 ## 获取源码
 
-[部署仓库 main](https://github.com/BillShiyaoZhang/agent-collaboration-deploy/tree/main)固定 Web 提交 `fa55096cc66f88f17f1b6191a5bc41d046cd08e8`（[Web 固定代码](https://github.com/BillShiyaoZhang/agent-collaboration-web/tree/fa55096cc66f88f17f1b6191a5bc41d046cd08e8)）。Web 是独立仓库，不要通过 `submodule update --remote` 选择另一版本。
+[部署仓库 main](https://github.com/BillShiyaoZhang/agent-collaboration-deploy/tree/main)固定 Web 提交 `4abb3f34331f2d26be411cf0af60bd3827b26314`（[Web 固定代码](https://github.com/BillShiyaoZhang/agent-collaboration-web/tree/4abb3f34331f2d26be411cf0af60bd3827b26314)）。Web 是独立仓库，不要通过 `submodule update --remote` 选择另一版本。
 
 ```sh
 git clone --branch main --recurse-submodules \
@@ -79,9 +79,9 @@ Gateway 已补账户绑定接入码、配额/限流、分页、状态回收和�
 云端实际环境和结果见[本次验证记录](../verification/WORKSPACE_GATEWAY_CLOUD_2026-10-01.md)，入口见[跨仓验证](../../tests/README.md)，部署准备见[运维说明](../operations/WORKSPACE_GATEWAY.md)。由 Ambient 完成：
 
 1. 临时账户/数据库/工作区走完「登录 → 接入码 → 配对 → 同账户领取 → 本机确认 → 真实 Tunnel → 门户打开」，跨账户领取失败且不消耗码。
-2. 真浏览器核对登录 Cookie、节点 Cookie、iframe 固定资源、CSP、双向 WS 和子协议；任意工作区 JavaScript 与门户使用不同可注册域名。
+2. 真浏览器核对登录 Cookie、节点 Cookie、iframe 固定资源、CSP、双向 WS 和子协议；默认要求任意工作区 JavaScript 与门户使用不同可注册域名；临时 same-site-subdomains 必须额外验证真实浏览器 __Host Cookie、Domain 注入拒绝、旧 Cookie 拒绝、同站 fetch/form/iframe 防护，规则见[运维说明](../operations/WORKSPACE_GATEWAY.md)。
 3. 验证缺码/过期/重放、quota、429 退避、慢正文/超大帧、断线不重复执行；撤销、到期、删账户关闭已有 HTTP/WS。
 4. 同设备身份及原数据库重启，paired 保留、旧未批准节点作废；记录备份完整性、清理、tombstone 和回滚兼容性。
 5. 在默认预算下实测完整前端/Frame加载、多WS和实际RSS，再用独立测试域名/DNS-01 wildcard TLS 运行 nginx + Web + Gateway + Ambient，确认公网账户 API/健康/指标关闭、伪造代理头被覆盖、未知 Host 拒绝、票据不写代理日志。
 
-完成后交回 Ambient 提交、固定云端提交、实际测试环境和结果，再按原目标评估合并及部署。本分支不表示生产发布完成。
+完成后交回 Ambient 提交、固定云端提交、实际测试环境和结果，再按原目标评估合并及部署。源码或本地验证不表示生产发布完成。

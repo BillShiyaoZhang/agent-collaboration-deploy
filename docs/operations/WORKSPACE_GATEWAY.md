@@ -1,15 +1,25 @@
-# Ambient Workspace Gateway 运维（联调分支）
+# Ambient Workspace Gateway 运维
 
-适用于 `main` 中的可选 Workspace 组件。Ambient 侧已按[交接契约](../developers/AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)完成适配，独立结果见[验收记录](../verification/AMBIENT_WORKSPACE_ACCEPTANCE_2026-10-01.md)。当前 Web 已升级，Workspace 公网入口待独立域名、DNS 与 TLS；实际状态见[发布记录](../releases/AMBIENT_WORKSPACE_DEPLOYMENT_2026-10-01.md)。原平台、Web 身份、数据库、NEXTAUTH_SECRET 与 v2 签名策略均须保留。只更新源码不能声称生产已启用。
+适用于 `main` 中的可选 Workspace 组件。Ambient 侧已按[交接契约](../developers/AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)完成适配，独立结果见[验收记录](../verification/AMBIENT_WORKSPACE_ACCEPTANCE_2026-10-01.md)。当前代码支持独立注册域名及显式临时子域名两种模式；是否已启用以[发布记录](../releases/AMBIENT_WORKSPACE_DEPLOYMENT_2026-10-01.md)为准。原平台、Web 身份、数据库、NEXTAUTH_SECRET 与 v2 签名策略均须保留。只更新源码不能声称生产已启用。
 
 ## 域名、证书与配置
 
-门户继续使用现有 NEXTAUTH_URL。新控制 Host 与节点 wildcard 必须位于另一可注册域名，例如门户 portal.example.com、控制 connect.example-workspace.com、节点 *.nodes.example-workspace.com。同 example.com 的不同子域不足以隔离工作区任意 JavaScript；完整 ICANN/PRIVATE PSL 校验会拒绝。替换示例域名，不把占位值当作可发布配置。
+门户继续使用现有 HTTPS `NEXTAUTH_URL`。`WORKSPACE_GATEWAY_ORIGIN_MODE` 仅接受以下两个值，未知值启动或渲染失败：
+
+- `separate-site`（默认）：控制 Host 与节点 wildcard 位于同一可注册域名，且与门户使用不同可注册域名，例如门户 `portal.example.com`、控制 `connect.example-workspace.com`、节点 `*.nodes.example-workspace.com`。完整 ICANN/PRIVATE PSL 校验继续生效。
+- `same-site-subdomains`（显式临时选项）：三者共享可注册域名；门户 Host、控制 Host、每个节点 Host 仍须不同，门户必须位于节点命名空间之外。例如门户 `agent-communication.online`、控制 `gateway.workspace.agent-communication.online`、节点 `*.workspace.agent-communication.online`。控制名称不得匹配24位十六进制节点名称。禁止复用同一个 Host 或路径承载不同工作区。
+
+临时模式必须同时部署新 Web 和 renderer 生成的门户 guard，不能单独放宽域名检查。Web 的六类 NextAuth Cookie 全部使用 `__Host-`、Secure、HttpOnly、SameSite=Lax、Path=/，没有 Domain；middleware 与认证库读取同一会话名，拒绝旧 Cookie，已有浏览器需要重新登录一次。账户、原 `NEXTAUTH_SECRET` 和配对身份保留。
+
+门户 Web、认证和 `/admin` 在 public 路由之前拒绝 `Sec-Fetch-Site: same-site`、外来或 null Origin、带 Cookie 但缺失/非法 Fetch Metadata，以及带 Cookie 的非 GET/HEAD 请求缺少精确门户 Origin。外站仅允许页面 GET/HEAD 顶层导航，API、嵌入和子资源不享有该例外。cookie-free 原生 CLI 的签名/Bearer 请求保留；Platform `/api/v1/`、`/api/v2/` 与精确 `/healthz` 保持原行为。门户和节点设置 Origin-Agent-Cluster/COOP；无跨域凭据 CORS。www 页面正常导航重定向到规范门户 Host。
+
+此选项要求支持 Fetch Metadata 与 `__Host-` 的现代浏览器。从工作区页面直接点击门户链接会被拒绝，请使用地址栏或书签回门户。同站恶意页面仍可能写入大量父域 Cookie，造成 Cookie 额度/请求头耗尽和重新登录；临时模式的可用性隔离弱于独立注册域名。稳定运行后切换 `separate-site`。替换示例域名，不把占位值当发布配置。
 
 将[变量模板](../../deploy/workspace.env.example)合入服务器原私有 .env，生成独立 WORKSPACE_GATEWAY_SECRET（例如 openssl rand -hex 32）。控制和节点 DNS 指向入口服务器。申请包含控制 Host 与 *.节点域名的可信 TLS 证书；wildcard 使用 DNS-01。DNS服务凭据、私钥和真实 .env 不进入源码。
 
 | 变量 | 用途 |
 | --- | --- |
+| WORKSPACE_GATEWAY_ORIGIN_MODE | 默认 separate-site；显式临时值 same-site-subdomains |
 | WORKSPACE_GATEWAY_DOMAIN | 节点基域，不带 scheme 或路径 |
 | WORKSPACE_GATEWAY_CONTROL_HOST | 精确公开 Connector Host |
 | WORKSPACE_GATEWAY_PUBLIC_URL | 上述控制 Host 的 HTTPS origin，Web返回给用户 |
@@ -74,4 +84,4 @@ python3 tools/maintenance/check_structure.py
 
 Ingress测试用合成证书与隔离Docker服务，不替代真实公网TLS。实际环境/结果见[验证记录](../verification/WORKSPACE_GATEWAY_CLOUD_2026-10-01.md)。发布后须真实验证登录与新接入、原paired身份、双向HTTP/WS、撤销/到期/删除关闭连接、无效Host、账户API不公开、代理头覆盖、资源拒绝与恢复，以及原Agent Comm/v2功能仍可用。
 
-证书续期使用原DNS-01方法。成功续期后安全复制实际证书和私钥到挂载目录，重新运行renderer核对，然后nginx -t/reload；已有只读目录挂载无需为文件更新重建容器。复制与reload之间避免中间配置生效，私钥保持受限权限。新增证书续期不能假设门户原webroot续期自动覆盖wildcard。
+证书续期使用原DNS-01方法。人工 DNS hook 的证书不能靠原 webroot timer 自动续期；须在到期前重新完成 DNS-01，或配置受限 DNS API hook。成功续期后安全复制实际证书和私钥到挂载目录，重新运行renderer核对，然后nginx -t/reload；已有只读目录挂载无需为文件更新重建容器。复制与reload之间避免中间配置生效，私钥保持受限权限。新增证书续期不能假设门户原webroot续期自动覆盖wildcard。

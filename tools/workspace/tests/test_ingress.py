@@ -44,6 +44,51 @@ class IngressPolicyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "separate"):
             ingress.validate_settings(values)
 
+    def test_same_site_mode_requires_exact_enum_and_distinct_hosts(self):
+        values = settings()
+        values.update(
+            WORKSPACE_GATEWAY_ORIGIN_MODE="same-site-subdomains",
+            WORKSPACE_GATEWAY_DOMAIN="nodes.workspace.agent-communication.online",
+            WORKSPACE_GATEWAY_CONTROL_HOST="connect.workspace.agent-communication.online",
+            WORKSPACE_GATEWAY_PUBLIC_URL="https://connect.workspace.agent-communication.online",
+        )
+        result = ingress.validate_settings(values)
+        self.assertEqual("same-site-subdomains", result["ORIGIN_MODE"])
+        self.assertEqual("https://agent-communication.online", result["PORTAL_ORIGIN"])
+        for changed in (
+            {"WORKSPACE_GATEWAY_ORIGIN_MODE": "false"},
+            {"WORKSPACE_GATEWAY_ORIGIN_MODE": ""},
+            {"NEXTAUTH_URL": "https://connect.workspace.agent-communication.online"},
+            {"NEXTAUTH_URL": "https://portal.nodes.workspace.agent-communication.online"},
+            {"NEXTAUTH_URL": "https://portal.example.com"},
+        ):
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                ingress.validate_settings({**values, **changed})
+
+    def test_render_guard_exists_only_in_same_site_mode_and_is_removed_on_switch(self):
+        values = settings()
+        values.update(
+            WORKSPACE_GATEWAY_ORIGIN_MODE="same-site-subdomains",
+            WORKSPACE_GATEWAY_DOMAIN="nodes.workspace.agent-communication.online",
+            WORKSPACE_GATEWAY_CONTROL_HOST="connect.workspace.agent-communication.online",
+            WORKSPACE_GATEWAY_PUBLIC_URL="https://connect.workspace.agent-communication.online",
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "config"
+            with patch.object(ingress, "validate_certificate"):
+                ingress.render(values, output, "openssl")
+            metadata = (output / "portal-workspace-metadata.conf").read_text()
+            guard = (output / "portal-workspace-guard.inc").read_text()
+            self.assertIn(r"https://agent\-communication\.online", metadata)
+            self.assertIn("$workspace_portal_guard_denied", guard)
+            self.assertNotIn("@@", metadata + guard)
+            # Policy changes must not leave a stale same-site guard enabled.
+            with patch.object(ingress, "validate_certificate"):
+                ingress.render(settings(), output, "openssl")
+            self.assertFalse((output / "portal-workspace-metadata.conf").exists())
+            self.assertFalse((output / "portal-workspace-guard.inc").exists())
+            self.assertTrue((output / "workspace.conf").exists())
+
     def test_handles_co_uk_and_private_suffixes(self):
         values = settings()
         values.update(

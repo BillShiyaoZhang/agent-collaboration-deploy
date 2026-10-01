@@ -161,6 +161,47 @@ def test_config_invalid_values_and_psl_domain_isolation(tmp_path, monkeypatch):
     assert GatewayConfig.from_env().request_timeout == 0.25
 
 
+
+def test_same_site_origin_mode_is_explicit_https_and_keeps_distinct_node_hosts(monkeypatch):
+    shared = ("nodes.workspace.example.com", "https", "connect.workspace.example.com", "https://portal.example.com")
+    with pytest.raises(ValueError, match="separate"):
+        validate_origins(*shared)
+    validate_origins(*shared, "same-site-subdomains")
+    cfg = GatewayConfig(secret="s"*64, scheme="https", workspace_domain=shared[0],
+                        control_host=shared[2], portal_origin=shared[3], origin_mode="same-site-subdomains")
+    assert cfg.origin_mode == "same-site-subdomains"
+    for mode in ("false", "true", "SEPARATE-SITE", "", " same-site-subdomains", None):
+        with pytest.raises(ValueError, match="mode"):
+            validate_origins(*shared, mode)
+    with pytest.raises(ValueError, match="HTTPS"):
+        validate_origins("localhost:8090", "http", "localhost:8090", "", "same-site-subdomains")
+    with pytest.raises(ValueError, match="mode"):
+        GatewayConfig(secret="s", origin_mode="false")
+    monkeypatch.setenv("WORKSPACE_GATEWAY_SECRET", "s"*64)
+    monkeypatch.setenv("WORKSPACE_GATEWAY_SCHEME", "https")
+    monkeypatch.setenv("WORKSPACE_GATEWAY_DOMAIN", shared[0])
+    monkeypatch.setenv("WORKSPACE_GATEWAY_CONTROL_HOST", shared[2])
+    monkeypatch.setenv("WORKSPACE_GATEWAY_PORTAL_ORIGIN", shared[3])
+    monkeypatch.setenv("WORKSPACE_GATEWAY_ORIGIN_MODE", "same-site-subdomains")
+    assert GatewayConfig.from_env().origin_mode == "same-site-subdomains"
+    monkeypatch.setenv("WORKSPACE_GATEWAY_ORIGIN_MODE", "false")
+    with pytest.raises(ValueError, match="mode"):
+        GatewayConfig.from_env()
+
+
+@pytest.mark.parametrize("domain,control,portal", [
+    ("nodes.workspace.example.com", "connect.other.net", "https://portal.example.com"),
+    ("nodes.workspace.example.com", "connect.workspace.example.com", "https://portal.other.net"),
+    ("nodes.workspace.example.com", "connect.workspace.example.com", "http://portal.example.com"),
+    ("nodes.workspace.example.com", "connect.workspace.example.com", "https://connect.workspace.example.com"),
+    ("nodes.workspace.example.com", "connect.workspace.example.com", "https://nodes.workspace.example.com"),
+    ("nodes.workspace.example.com", "connect.workspace.example.com", "https://portal.nodes.workspace.example.com"),
+    ("nodes.workspace.example.com", "a"*24 + ".nodes.workspace.example.com", "https://portal.example.com"),
+])
+def test_same_site_origin_mode_rejects_overlap_or_unrelated_sites(domain, control, portal):
+    with pytest.raises(ValueError):
+        validate_origins(domain, "https", control, portal, "same-site-subdomains")
+
 def test_resources_global_slots_buffers_and_browser_queue_charge(tmp_path):
     cfg = GatewayConfig(secret="s", global_http_concurrency=1, global_ws_concurrency=1, global_tunnel_concurrency=1)
     resources = Resources(cfg)

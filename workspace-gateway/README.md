@@ -52,7 +52,7 @@ All configuration fields map to WORKSPACE_GATEWAY_ plus the uppercase field, exc
 | HTTP_CONCURRENCY / WS_CONCURRENCY | 16 / 16 | Per-node HTTP / browser WS |
 | GLOBAL_HTTP_CONCURRENCY / GLOBAL_WS_CONCURRENCY / GLOBAL_TUNNEL_CONCURRENCY | 64 / 64 / 32 | Global caps; byte budget may reject earlier |
 | CONTROL_CONCURRENCY / CONTROL_BODY_LIMIT | 16 / 16384 | Control-plane connections/body |
-| BUFFER_BYTES / QUEUED_BYTES | 268435456 / 8388608 | Application reservation / queued frames |
+| ORIGIN_MODE | separate-site | separate-site or explicit temporary same-site-subdomains |\n| BUFFER_BYTES / QUEUED_BYTES | 268435456 / 8388608 | Application reservation / queued frames |
 | BROWSER_QUEUE_SIZE / WS_MAX_QUEUE | 4 / 2 | App / Uvicorn queues; maxima 8 / 4 |
 | REQUEST_TIMEOUT / WS_SEND_TIMEOUT / TUNNEL_IDLE_TIMEOUT | 30 / 10 / 90 | HTTP+WS handshake / writes / idle connector seconds |
 | MAX_NODES / MAX_ACCOUNT_NODES | 1000 / 10 | Active nodes globally / per account |
@@ -73,7 +73,11 @@ Per HTTP reserves 6*HTTP_LIMIT+131072 bytes; browser WS reserves (WS_MAX_QUEUE+1
 
 Only peers in WORKSPACE_GATEWAY_TRUSTED_PROXY_CIDRS (default empty) can supply X-Real-IP. Client forwarding headers cannot rotate source counters. Rate tables reject new keys at capacity and recycle expired counters. Anonymous source keys are hashed and never persisted. Service-authenticated GET /v1/metrics exposes fixed counters and aggregate connection/buffer totals, with no account/source labels.
 
-Production requires exact control host/public URL, WORKSPACE_GATEWAY_PORTAL_ORIGIN, and a printable ASCII service secret of at least 32 characters. Portal must use a different registrable domain from workspace/control; workspace and control share a registrable domain. Validation uses the vendored [official Public Suffix List](https://publicsuffix.org/list/) (ICANN+PRIVATE, MPL-2.0) with IDNA, wildcard and exception rules; unknown suffixes fail closed. Localhost is the explicit HTTP development exception.
+Production requires exact control host/public URL, WORKSPACE_GATEWAY_PORTAL_ORIGIN, and a printable ASCII service secret of at least 32 characters. WORKSPACE_GATEWAY_ORIGIN_MODE defaults to separate-site: portal uses a different registrable domain from workspace/control, while workspace and control share a registrable domain. The explicit temporary same-site-subdomains mode requires HTTPS and all three hosts on the same registrable site; portal must be a different host outside the node domain, and control cannot match a 24-hex node host. Unknown mode values fail startup. Keep a different host for every node; sharing a fixed origin across nodes or grants would let old workspace JavaScript use a newly launched session.
+
+Temporary mode requires the reviewed Web version with production __Host- authentication cookies and the generated portal nginx guard. The renderer creates portal metadata maps/guard only for this mode and removes its own stale guard files when switching back. The guard rejects sibling-origin requests, foreign/null Origin, cookies without valid Fetch Metadata, and unsafe cookie requests without the exact portal Origin. All cross-site requests are limited to safe top-level document navigation outside /api. Public Platform /api/v1/, /api/v2/ and /healthz keep their signed/health flows. Portal and node Origin-Agent-Cluster/COOP headers prevent document.domain relaxation and opener sharing. Same-site cookie-jar eviction can still force a logout; a separate registered site remains the final deployment choice.
+
+Validation uses the vendored [official Public Suffix List](https://publicsuffix.org/list/) (ICANN+PRIVATE, MPL-2.0) with IDNA, wildcard and exception rules; unknown suffixes fail closed. Localhost is the explicit HTTP development exception.
 
 ## Verification scope
 

@@ -1,0 +1,6 @@
+# Generated only for explicit same-site-subdomains mode.
+# return runs before every Web/admin location.
+if ($workspace_portal_guard_denied) { return 403; }
+# Canonicalize safe Web/admin navigation after denying hostile origins.
+# Signed Platform routes retain their original Host and route.
+if ($workspace_portal_canonical_redirect) { return 308 @@PORTAL_ORIGIN@@$request_uri; }

@@ -103,6 +103,7 @@ class GatewayConfig:
     control_host: str = "testserver"
     service_host: str = ""
     portal_origin: str = ""
+    origin_mode: str = "separate-site"
     trusted_proxy_cidrs: str = ""
 
     def __post_init__(self):
@@ -128,7 +129,7 @@ class GatewayConfig:
             raise ValueError("Production service secret must contain at least 32 characters")
         if not re.fullmatch(r"[a-z0-9.-]+(?::[0-9]{1,5})?", self.control_host):
             raise ValueError("Invalid control host")
-        validate_origins(self.workspace_domain, self.scheme, self.control_host, self.portal_origin)
+        validate_origins(self.workspace_domain, self.scheme, self.control_host, self.portal_origin, self.origin_mode)
         for field_name in self.__dataclass_fields__:
             value = getattr(self, field_name)
             if isinstance(value, (int, float)) and (isinstance(value, bool) or not math.isfinite(value) or value <= 0):

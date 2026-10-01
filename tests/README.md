@@ -20,7 +20,12 @@
 
 - 在 `workspace-gateway/` 运行 `python -m pytest -q`：使用临时SQLite/假Connector验证授权、接入码、配额、分页、清理、代理与资源释放。
 - [入口配置测试](../tools/workspace/tests/)：`python -m unittest discover -s tools/workspace/tests -v`；[真实nginx隔离检查](../tools/workspace/check_ingress.py)：`python tools/workspace/check_ingress.py`，需要Docker Linux引擎、缓存镜像和OpenSSL。自签名合成TLS不证明公网证书可信。
-- [真实Web/Gateway HTTPS smoke](integration/test_workspace_portal_gateway.py)：先构建Web，再用已装Gateway依赖的Python运行该脚本。自动生成loopback测试TLS/SQLite/服务秘密，区分内部BFF与公开Connector Host，执行真实NextAuth/接入码/本机确认/删账户流程并清理自建进程；不读取dotenv，不输出测试密码。用 `--help` 指定Node/OpenSSL/解释器。\n- [授权状态备份测试](../tools/maintenance/tests/test_backup_workspace_gateway.py)：`python -m unittest discover -s tools/maintenance/tests -p test_backup_workspace_gateway.py -v`，检查在线WAL、身份/删除记录与不可覆盖。
+- [真实Web/Gateway HTTPS smoke](integration/test_workspace_portal_gateway.py)：先构建Web，再用已装Gateway依赖的Python运行该脚本。自动生成loopback测试TLS/SQLite/服务秘密，区分内部BFF与公开Connector Host，执行真实NextAuth/接入码/本机确认/删账户流程并清理自建进程；不读取dotenv，不输出测试密码。用 `--help` 指定Node/OpenSSL/解释器。
+- [授权状态备份测试](../tools/maintenance/tests/test_backup_workspace_gateway.py)：`python -m unittest discover -s tools/maintenance/tests -p test_backup_workspace_gateway.py -v`，检查在线WAL、身份/删除记录与不可覆盖。
 - Web组件测试按其[测试文档](../agent-collaboration-web/tests/README.md)运行；实际环境/结果见[2026-10-01记录](../docs/verification/WORKSPACE_GATEWAY_CLOUD_2026-10-01.md)，本机适配见[交接](../docs/developers/AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)。
 
 历史 `review_workspace_gateway_limits.py` 断言旧提案缺陷，应指向固定提交 `94aeccbbf82aa855a2d430b6e34193789a99bff1` 的独立源码；不能把它当修复后Gateway回归测试。
+
+## 临时同站子域名浏览器保护
+
+[真实 Chromium HTTPS 检查](integration/test_workspace_samesite_browser.py)需要先构建 Web，显式传入已安装 Playwright 的 package.json（`--playwright-package`）及必要时 `--browser-cache`。使用保留 example.com 合成域名、浏览器 host-resolver 将它们映射到127.0.0.1、请求白名单和新鲜临时 SQLite；不会使用已有浏览器 profile、dotenv 或真实账户。验证真实 Credentials 登录/BFF、Cookie 属性与父域注入拒绝、旧 Cookie 拒绝、浏览器自动产生的 Fetch Metadata 下的 sibling fetch/form/iframe 403、无 Cookie 保护及节点存储/Cookie 隔离。自签名 TLS 与合成节点不能替代公网 CA、真实 Ambient 或生产账户验收。

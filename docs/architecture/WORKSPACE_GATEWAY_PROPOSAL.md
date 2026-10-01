@@ -1,6 +1,6 @@
-# Ambient Workspace Gateway（联调分支）
+# Ambient Workspace Gateway
 
-此功能在独立分支实现，未合入 main、未部署生产。Ambient 拥有本地工作区、Agent、App、密钥和 Run；Gateway 只中转有界 HTTP/WebSocket、持久化授权与审计元数据，不保存业务正文或重派任务。云端与本机交接见[2026-10-01 文档](../developers/AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)，历史缺陷证据见[审查记录](WORKSPACE_GATEWAY_REVIEW_2026-10-01.md)。
+此功能已合入 `main`；生产启用范围见[发布记录](../releases/AMBIENT_WORKSPACE_DEPLOYMENT_2026-10-01.md)。Ambient 拥有本地工作区、Agent、App、密钥和 Run；Gateway 只中转有界 HTTP/WebSocket、持久化授权与审计元数据，不保存业务正文或重派任务。云端与本机交接见[2026-10-01 文档](../developers/AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)，历史缺陷证据见[审查记录](WORKSPACE_GATEWAY_REVIEW_2026-10-01.md)。
 
 ## 接入与授权
 
@@ -36,7 +36,7 @@ Tunnel hello/http.request/ws.open 携带扁平 node_id,account_id,grant_id,scope
 
 ## 隔离与资源
 
-开发使用 localhost 和节点子域；生产仅 HTTPS，控制和节点需同一可注册域名，且与门户使用不同可注册域名。Gateway 离线使用完整 ICANN/PRIVATE Public Suffix List，Web 使用锁定版本的 PSL 库。生产 Cookie 为 __Host- 前缀、Secure、HttpOnly、SameSite=Lax、Path=/，无 Domain；最长一小时，不超过授权期。
+开发使用 localhost 和节点子域；生产仅 HTTPS，控制和节点需同一可注册域名，默认 `separate-site` 与门户使用不同可注册域名。显式 `same-site-subdomains` 可临时共用注册域，但保持每节点独立 Host，门户在节点域之外，并同时部署全部门户 __Host Cookie、Fetch Metadata/Origin guard 与 nginx 防护。相同 Host 的路径方案不满足存储、Cookie 与 service worker 隔离。临时模式仍存在父域 Cookie 耗尽的可用性风险，具体规则见[运维说明](../operations/WORKSPACE_GATEWAY.md)。Gateway 离线使用完整 ICANN/PRIVATE Public Suffix List，Web 使用锁定版本的 PSL 库。生产 Cookie 为 __Host- 前缀、Secure、HttpOnly、SameSite=Lax、Path=/，无 Domain；最长一小时，不超过授权期。
 
 公网入口仅开放控制 Host 的五条 Connector 路由和精确节点 Host；账户、健康、指标只在内网。单独代理专网及精确 /32 可信来源，不信任客户端伪造的 forwarded 头。Gateway 与 Connector 双重校验路径；/api/*、/ws/* 到 Backend，静态资源到 Frontend，禁止代理 /api/remote-workspace。秘密、Cookie、Authorization、Host、代理身份和 hop-by-hop 头不向本机转发。
 

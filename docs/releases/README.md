@@ -44,3 +44,5 @@
 最新源码组合由根仓库递归子模块引用确定；线上运行提交和镜像须以最近一条**完成核对**的发布记录及服务器实际状态为准。[长期策略记录](V2_PERSISTENT_POLICY_2026-09-25.md)列出当前 epoch 3 摘要、备份、镜像与重新授权边界；[合规切换记录](V2_COMPLIANCE_POLICY_2026-09-25.md)保留 epoch 2 切换时的合成端到端验收；[v0.8.0 发布记录](V2_CLIENT_RELEASE_2026-09-24.md)列出公开客户端及当时镜像与校验范围；[生产 v2 私密兼容策略记录](V2_PRIVATE_COMPAT_POLICY_2026-09-24.md)保留策略首次切换及 r2 验收；先前的[协议代码上线记录](V2_CODE_DEPLOYMENT_2026-09-24.md)保留未启用策略时的状态。发布记录本身的纯文档提交不代表服务器再次切换应用代码。公开客户端版本和校验值以[官网发布清单](https://agent-communication.online/downloads/release-manifest.json)为准。
 
 新增发布记录应写清发布时的版本、检查范围、持久数据变化、运行结果和回滚位置；不将密钥、真实数据库或原始私人日志放入仓库。通用步骤在 [运维指南](../operations/DEPLOYMENT.md) 中维护。
+
+- [Workspace 临时子域名发布（2026-10-01）](WORKSPACE_TEMPORARY_SUBDOMAIN_2026-10-01.md)：同站模式保护、真实 DNS-01 和本次启用证据。

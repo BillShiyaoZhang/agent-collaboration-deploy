@@ -45,4 +45,4 @@ cd agent-collaboration-deploy
 
 ## Ambient Workspace 联调
 
-- [云端实现与 Ambient 交接（2026-10-01）](AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)：账户接入码、客户端适配、固定子模块及合并门禁；分支未上线。
+- [云端实现与 Ambient 交接（2026-10-01）](AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)：账户接入码、客户端适配、固定子模块及验收要求；实际启用状态以发布记录为准。

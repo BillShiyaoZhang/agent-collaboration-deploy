@@ -45,6 +45,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         data = json.dumps({'headers': dict(self.headers), 'peer': self.client_address[0]}).encode()
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
+        self.send_header('Origin-Agent-Cluster', '?0')
+        self.send_header('Cross-Origin-Opener-Policy', 'unsafe-none')
         self.send_header('Content-Length', str(len(data)))
         self.end_headers()
         try: self.wfile.write(data)
@@ -86,8 +88,15 @@ def request(port: int, host: str, path: str, method: str = "GET", headers=None, 
         connection.close()
 
 
-def check(binary: str, nginx_image: str, python_image: str) -> list[str]:
+def check(binary: str, nginx_image: str, python_image: str, origin_mode: str = "separate-site") -> list[str]:
     checks: list[str] = []
+    if origin_mode == "same-site-subdomains":
+        CONTROL, DOMAIN = "connect.workspace.agent-communication.online", "nodes.workspace.agent-communication.online"
+    elif origin_mode == "separate-site":
+        CONTROL, DOMAIN = "connect.example-workspace.com", "nodes.example-workspace.com"
+    else:
+        raise ValueError("Unknown ingress origin mode")
+    NODE = "a" * 24 + "." + DOMAIN
     suffix = uuid.uuid4().hex[:10]
     network, backend, nginx = (f"workspace-check-{suffix}-{name}" for name in ("net", "backend", "nginx"))
     public_network = f"workspace-check-{suffix}-public"
@@ -104,9 +113,10 @@ def check(binary: str, nginx_image: str, python_image: str) -> list[str]:
         run(binary, "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "2",
             "-config", str(request_config),
             "-subj", "/CN=" + CONTROL,
-            "-addext", f"subjectAltName=DNS:{CONTROL},DNS:*.{DOMAIN},DNS:agent-communication.online",
+            "-addext", f"subjectAltName=DNS:{CONTROL},DNS:*.{DOMAIN},DNS:agent-communication.online,DNS:www.agent-communication.online",
             "-keyout", str(cert / "privkey.pem"), "-out", str(cert / "fullchain.pem"))
         values = {
+            "WORKSPACE_GATEWAY_ORIGIN_MODE": origin_mode,
             "WORKSPACE_GATEWAY_DOMAIN": DOMAIN, "WORKSPACE_GATEWAY_CONTROL_HOST": CONTROL,
             "WORKSPACE_GATEWAY_PUBLIC_URL": "https://" + CONTROL,
             "NEXTAUTH_URL": "https://agent-communication.online", "WORKSPACE_GATEWAY_SECRET": "a" * 64,
@@ -150,6 +160,92 @@ def check(binary: str, nginx_image: str, python_image: str) -> list[str]:
                 raise AssertionError("Isolated nginx upstream did not become ready")
             assert request(port, "agent-communication.online", "/healthz")[0] == 200
             checks.append("existing portal HTTPS route remains available")
+            status, headers, _ = request(port, NODE, "/api/isolation")
+            assert status == 200 and headers["Origin-Agent-Cluster"] == "?1"
+            assert headers["Cross-Origin-Opener-Policy"] == "same-origin"
+            status, headers, _ = request(port, "agent-communication.online", "/login")
+            assert status == 200 and headers["Origin-Agent-Cluster"] == "?1"
+            assert headers["Cross-Origin-Opener-Policy"] == "same-origin"
+            status, headers, _ = request(port, "agent-communication.online", "/verify-email")
+            assert status == 200 and headers["Origin-Agent-Cluster"] == "?1"
+            assert headers["Cross-Origin-Opener-Policy"] == "same-origin"
+            checks.append("portal/email and node browser isolation headers cannot be relaxed upstream")
+            portal = "agent-communication.online"
+            cookie = {"Cookie": "__Host-next-auth.session-token=synthetic"}
+            if origin_mode == "same-site-subdomains":
+                for path in ("/api/auth/session", "/login", "/admin", "/HEALTHZ", "/api/v1/../auth/session",
+                             "/api/v1/%2e%2e/auth/session"):
+                    assert request(port, portal, path, headers={"Sec-Fetch-Site": "same-site"})[0] == 403
+                for source in ("https://" + NODE, "null", "https://unrelated.example.com", "HTTPS://AGENT-COMMUNICATION.ONLINE", "https://agent-communicationXonline"):
+                    assert request(port, portal, "/api/auth/session", headers={"Origin": source})[0] == 403
+                for metadata in ("", "unknown", "SAME-ORIGIN", "same-origin, same-site"):
+                    assert request(port, portal, "/api/auth/session", headers={
+                        **cookie, "Sec-Fetch-Site": metadata})[0] == 403
+                for source in (None, "null", "https://" + NODE):
+                    headers = {**cookie, "Sec-Fetch-Site": "same-origin"}
+                    if source is not None:
+                        headers["Origin"] = source
+                    assert request(port, portal, "/api/auth/session", method="POST",
+                                   headers=headers, body=b"{}")[0] == 403
+                for destination in ("empty", "iframe", "image", "script"):
+                    assert request(port, portal, "/api/auth/session", headers={
+                        **cookie, "Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate",
+                        "Sec-Fetch-Dest": destination})[0] == 403
+                for path in ("/api/auth/csrf", "/admin", "/login"):
+                    assert request(port, portal, path, headers={
+                        "Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "no-cors",
+                        "Sec-Fetch-Dest": "image"})[0] == 403
+                assert request(port, portal, "/login", headers={
+                    "Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate",
+                    "Sec-Fetch-Dest": "document"})[0] == 200
+                assert request(port, portal, "/api/auth/session", headers={
+                    **cookie, "Sec-Fetch-Site": "same-origin"})[0] == 200
+                assert request(port, portal, "/api/auth/session", method="POST", body=b"{}", headers={
+                    **cookie, "Sec-Fetch-Site": "same-origin", "Origin": "https://" + portal})[0] == 200
+                assert request(port, portal, "/login", headers={
+                    **cookie, "Sec-Fetch-Site": "none"})[0] == 200
+                assert request(port, portal, "/login", headers={
+                    **cookie, "Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate",
+                    "Sec-Fetch-Dest": "document"})[0] == 200
+                assert request(port, portal, "/api/onboarding", method="POST", body=b"{}")[0] == 200
+                assert request(port, portal, "/api/onboarding", method="POST", body=b"{}", headers={
+                    "Sec-Fetch-Site": "none"})[0] == 403
+                for path in ("/api", "/api/auth/session"):
+                    assert request(port, portal, path, headers={
+                        **cookie, "Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate",
+                        "Sec-Fetch-Dest": "document"})[0] == 403
+                status, headers, _ = request(port, "www." + portal, "/login?callbackUrl=%2Fdashboard", headers={
+                    "Sec-Fetch-Site": "none"})
+                assert status == 308 and headers["Location"] == "https://" + portal + "/login?callbackUrl=%2Fdashboard"
+                assert request(port, portal, "/login?callbackUrl=%2Fdashboard", headers={
+                    "Sec-Fetch-Site": "none"})[0] == 200
+                assert request(port, "www." + portal, "/login", headers={
+                    "Sec-Fetch-Site": "same-site"})[0] == 403
+                hostile = {**cookie, "Sec-Fetch-Site": "same-site", "Origin": "https://" + NODE,
+                           "Authorization": "Bearer synthetic-platform-token"}
+                for target_host in (portal, "www." + portal):
+                    for path in ("/api/v1/test", "/api/v2/test", "/healthz"):
+                        status, _, data = request(port, target_host, path, method="POST", headers=hostile, body=b"{}")
+                        received = {name.lower(): value for name, value in json.loads(data)["headers"].items()}
+                        assert status == 200 and received["authorization"] == hostile["Authorization"]
+                        if path != "/healthz":
+                            assert received["host"] == target_host
+                connection = http.client.HTTPConnection("127.0.0.1", http_port, timeout=5)
+                try:
+                    connection.request("GET", "/", headers={"Host": portal, "Sec-Fetch-Site": "same-site"})
+                    assert connection.getresponse().status == 403
+                finally:
+                    connection.close()
+                checks.append("same-site portal guard rejects sibling/opaque/missing metadata and unsafe origins")
+                checks.append("portal same-origin/direct navigation works; cross-site cookie subresources denied")
+                checks.append("safe www navigation canonicalized; signed Platform Host and no-cookie onboarding retained")
+            else:
+                assert request(port, portal, "/api/auth/session", headers=cookie)[0] == 200
+                assert request(port, portal, "/api/auth/session", method="POST", body=b"{}", headers={
+                    **cookie, "Sec-Fetch-Site": "same-site", "Origin": "https://" + NODE})[0] == 200
+                assert not (config / "portal-workspace-guard.inc").exists()
+                assert not (config / "portal-workspace-metadata.conf").exists()
+                checks.append("separate-site mode keeps optional portal guard absent")
             assert request(port, CONTROL, "/v1/accounts/test/nodes", headers={"Authorization": "Bearer synthetic-secret"})[0] == 404
             assert request(port, CONTROL, "/health")[0] == 404
             assert request(port, CONTROL, "/v1/connector/state/extra")[0] == 404
@@ -231,11 +327,14 @@ def main() -> int:
     parser.add_argument("--openssl", default=shutil.which("openssl"))
     parser.add_argument("--nginx-image", default=NGINX_IMAGE)
     parser.add_argument("--python-image", default="python:3.12-slim")
+    parser.add_argument("--origin-mode", choices=("both", "separate-site", "same-site-subdomains"), default="both")
     args = parser.parse_args()
     if not args.openssl:
         parser.error("OpenSSL is required; specify --openssl PATH")
-    for name in check(args.openssl, args.nginx_image, args.python_image):
-        print("PASS " + name)
+    modes = ("separate-site", "same-site-subdomains") if args.origin_mode == "both" else (args.origin_mode,)
+    for mode in modes:
+        for name in check(args.openssl, args.nginx_image, args.python_image, mode):
+            print("PASS " + mode + ": " + name)
     return 0
 
 

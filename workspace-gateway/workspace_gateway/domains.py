@@ -62,18 +62,38 @@ def registrable_domain(host):
     return ".".join(labels[-max(matches)-1:])
 
 
-def validate_origins(domain, scheme, control_host, portal_origin):
+ORIGIN_MODES = {"separate-site", "same-site-subdomains"}
+
+
+def validate_origins(domain, scheme, control_host, portal_origin, origin_mode="separate-site"):
+    if not isinstance(origin_mode, str) or origin_mode not in ORIGIN_MODES:
+        raise ValueError("Unknown workspace origin mode")
     if scheme == "http":
+        if origin_mode != "separate-site":
+            raise ValueError("Same-site subdomains require HTTPS")
         if domain.split(":")[0] != "localhost":
             raise ValueError("HTTP is only available for localhost development")
         return
+    if scheme != "https":
+        raise ValueError("Workspace origins require HTTPS")
     portal = urlsplit(portal_origin)
     if (portal.scheme != "https" or not portal.hostname or portal.username or portal.password
             or portal.path not in {"", "/"} or portal.query or portal.fragment):
         raise ValueError("Production requires WORKSPACE_GATEWAY_PORTAL_ORIGIN as an HTTPS origin")
-    workspace = registrable_domain(domain.split(":")[0])
-    control = registrable_domain(control_host.split(":")[0])
+    node_host = normalize_hostname(domain.split(":")[0])
+    connector_host = normalize_hostname(control_host.split(":")[0])
+    portal_host = normalize_hostname(portal.hostname)
+    workspace = registrable_domain(node_host)
+    control = registrable_domain(connector_host)
     if workspace != control:
         raise ValueError("Workspace and control hosts must use the same registrable domain")
-    if workspace == registrable_domain(portal.hostname):
+    if re.fullmatch(r"[a-f0-9]{24}\." + re.escape(node_host), connector_host):
+        raise ValueError("The connector hostname cannot also be a node hostname")
+    if (portal_host == connector_host or portal_host == node_host
+            or portal_host.endswith("." + node_host)):
+        raise ValueError("Portal must use a different host outside the node domain")
+    portal_site = registrable_domain(portal_host)
+    if origin_mode == "separate-site" and workspace == portal_site:
         raise ValueError("Workspace/control and portal require separate registrable domains")
+    if origin_mode == "same-site-subdomains" and workspace != portal_site:
+        raise ValueError("Same-site subdomains must share the portal registrable domain")

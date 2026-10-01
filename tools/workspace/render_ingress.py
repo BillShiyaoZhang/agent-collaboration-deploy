@@ -17,7 +17,7 @@ from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "workspace-gateway"))
-from workspace_gateway.domains import registrable_domain
+from workspace_gateway.domains import validate_origins
 
 
 def load_environment(path: Path) -> dict[str, str]:
@@ -81,11 +81,8 @@ def validate_settings(values: dict[str, str]) -> dict[str, str]:
     if https_origin(public_url) != control or public_url not in {"https://" + control, "https://" + control + "/"}:
         raise ValueError("WORKSPACE_GATEWAY_PUBLIC_URL must match WORKSPACE_GATEWAY_CONTROL_HOST")
     portal = https_origin(required(values, "NEXTAUTH_URL"))
-    node_site, control_site, portal_site = map(registrable_domain, (domain, control, portal))
-    if node_site != control_site or node_site == portal_site:
-        raise ValueError("Control and node domains must share a registrable workspace site separate from the portal")
-    if re.fullmatch(r"[a-f0-9]{24}\." + re.escape(domain), control):
-        raise ValueError("The connector hostname cannot also be a node hostname")
+    origin_mode = values.get("WORKSPACE_GATEWAY_ORIGIN_MODE", "separate-site")
+    validate_origins(domain, "https", control, "https://" + portal, origin_mode)
     secret = required(values, "WORKSPACE_GATEWAY_SECRET")
     if len(secret) < 32 or secret == values.get("NEXTAUTH_SECRET") or "replace-with" in secret:
         raise ValueError("Set an independent Workspace Gateway secret of at least 32 characters")
@@ -108,6 +105,8 @@ def validate_settings(values: dict[str, str]) -> dict[str, str]:
     return {
         "CONTROL_HOST": control, "NODE_DOMAIN_REGEX": re.escape(domain),
         "NGINX_IP": str(nginx_ip), "HTTP_BODY_LIMIT": str(body_limit), "NODE_DOMAIN": domain,
+        "PORTAL_ORIGIN": "https://" + portal, "PORTAL_ORIGIN_REGEX": re.escape("https://" + portal),
+        "PORTAL_HOST": portal, "ORIGIN_MODE": origin_mode,
     }
 
 
@@ -152,7 +151,11 @@ def render(values: dict[str, str], output: Path, binary: str) -> Path:
     validate_certificate(Path(required(values, "WORKSPACE_CONTROL_CERT_DIR")), settings["CONTROL_HOST"], binary)
     validate_certificate(Path(required(values, "WORKSPACE_NODE_CERT_DIR")), settings["NODE_DOMAIN"], binary, wildcard=True)
     rendered: list[tuple[str, str]] = []
-    for name in ("workspace.conf", "workspace-proxy.inc"):
+    names = ["workspace.conf", "workspace-proxy.inc"]
+    portal_files = ("portal-workspace-metadata.conf", "portal-workspace-guard.inc")
+    if settings["ORIGIN_MODE"] == "same-site-subdomains":
+        names.extend(portal_files)
+    for name in names:
         source = (ROOT / "deploy" / "nginx" / (name + ".template")).read_text(encoding="utf-8")
         for key, value in settings.items():
             source = source.replace("@@" + key + "@@", value)
@@ -165,6 +168,10 @@ def render(values: dict[str, str], output: Path, binary: str) -> Path:
         temporary = output / (name + ".tmp")
         temporary.write_text(content, encoding="utf-8", newline="\n")
         temporary.replace(output / name)
+    if settings["ORIGIN_MODE"] == "separate-site":
+        # Remove only renderer-owned guards when switching back to separate sites.
+        for name in portal_files:
+            (output / name).unlink(missing_ok=True)
     return output
 
 

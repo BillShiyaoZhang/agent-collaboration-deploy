@@ -23,3 +23,6 @@ proxy_buffering off;
 proxy_cache off;
 # Keep one consistent backoff value for nginx and Gateway 429 responses.
 proxy_hide_header Retry-After;
+# Workspace responses cannot relax browser origin isolation.
+proxy_hide_header Origin-Agent-Cluster;
+proxy_hide_header Cross-Origin-Opener-Policy;

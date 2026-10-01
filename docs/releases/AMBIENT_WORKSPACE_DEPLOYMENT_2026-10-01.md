@@ -1,5 +1,7 @@
 # Ambient 验收、main 合并与 Web 部署（2026-10-01）
 
+本记录描述18:29首轮部署；后续按用户选择启用临时子域名的状态与证据见[后续发布](WORKSPACE_TEMPORARY_SUBDOMAIN_2026-10-01.md)。
+
 Ambient 客户端符合云端交接要求，独立协议、网络与 Linux 容量检查通过；Web 与部署仓库已快进合并并推送 GitHub `main`，本次两个 proposal/review 分支已删除。Ambient、Platform、SDK 原本只保留 `main`，本轮没有修改它们的源码或用户状态。唯一修正是云端默认应用预算从 128 MiB 提高到 256 MiB，使完整页面的四条 WebSocket 能同时建立。
 
 北京时间 18:28 左右，现有云服务器已更新 Web 和 nginx 配置，18:29:44 完成切换后验证。**Workspace 公网入口尚未启用**：服务器仅有 `agent-communication.online` 的证书，没有独立工作区域名、DNS 与通配符 TLS。Gateway 镜像已经加载，未启动公网服务；新增页面及源码部署不能当作远程工作区已可用。

@@ -1,0 +1,86 @@
+# Generated only for explicit same-site-subdomains mode.
+# Platform signed protocols and health retain their existing ingress behavior.
+map $uri $workspace_portal_guard_scope {
+    default 1;
+    ~^/healthz$ 0;
+    ~^/api/v[12]/ 0;
+}
+map $http_sec_fetch_site $workspace_portal_same_site {
+    default 0;
+    ~^same-site$ 1;
+}
+map $http_sec_fetch_site $workspace_portal_metadata_known {
+    default 0;
+    ~^same-origin$ 1;
+    ~^same-site$ 1;
+    ~^cross-site$ 1;
+    ~^none$ 1;
+}
+map $http_sec_fetch_site $workspace_portal_cross_site {
+    default 0;
+    ~^cross-site$ 1;
+}
+map $uri $workspace_portal_navigation_path {
+    default 1;
+    ~^/api$ 0;
+    ~^/api/ 0;
+}
+map "$request_method:$http_sec_fetch_mode:$http_sec_fetch_dest:$workspace_portal_navigation_path" $workspace_portal_top_navigation {
+    default 0;
+    ~^GET:navigate:document:1$ 1;
+    ~^HEAD:navigate:document:1$ 1;
+}
+map $http_sec_fetch_site $workspace_portal_direct_request {
+    default 0;
+    ~^none$ 1;
+}
+map $http_origin $workspace_portal_foreign_origin {
+    default 1;
+    '' 0;
+    ~^@@PORTAL_ORIGIN_REGEX@@$ 0;
+}
+map $http_origin $workspace_portal_origin_exact {
+    default 0;
+    ~^@@PORTAL_ORIGIN_REGEX@@$ 1;
+}
+map $http_cookie $workspace_portal_has_cookie {
+    default 1;
+    '' 0;
+}
+map $request_method $workspace_portal_unsafe {
+    default 1;
+    ~^GET$ 0;
+    ~^HEAD$ 0;
+}
+map "$workspace_portal_has_cookie:$workspace_portal_metadata_known" $workspace_portal_cookie_metadata_denied {
+    default 0;
+    '1:0' 1;
+}
+map "$workspace_portal_has_cookie:$workspace_portal_unsafe:$workspace_portal_origin_exact" $workspace_portal_cookie_origin_denied {
+    default 0;
+    '1:1:0' 1;
+}
+map "$workspace_portal_cross_site:$workspace_portal_top_navigation" $workspace_portal_cross_site_denied {
+    default 0;
+    '1:0' 1;
+}
+map "$workspace_portal_direct_request:$workspace_portal_unsafe" $workspace_portal_direct_unsafe_denied {
+    default 0;
+    '1:1' 1;
+}
+map "$workspace_portal_same_site:$workspace_portal_foreign_origin:$workspace_portal_cookie_metadata_denied:$workspace_portal_cookie_origin_denied:$workspace_portal_cross_site_denied:$workspace_portal_direct_unsafe_denied" $workspace_portal_request_denied {
+    default 1;
+    '0:0:0:0:0:0' 0;
+}
+map $host $workspace_portal_other_host {
+    default 1;
+    '@@PORTAL_HOST@@' 0;
+}
+map "$workspace_portal_guard_scope:$workspace_portal_other_host:$workspace_portal_unsafe" $workspace_portal_canonical_redirect {
+    default 0;
+    '1:1:0' 1;
+}
+map "$workspace_portal_guard_scope:$workspace_portal_request_denied" $workspace_portal_guard_denied {
+    default 0;
+    '1:1' 1;
+}
