@@ -248,6 +248,13 @@ def check(binary: str, nginx_image: str, python_image: str, origin_mode: str = "
                 checks.append("separate-site mode keeps optional portal guard absent")
             assert request(port, CONTROL, "/v1/accounts/test/nodes", headers={"Authorization": "Bearer synthetic-secret"})[0] == 404
             assert request(port, CONTROL, "/health")[0] == 404
+            status, headers, data = request(port, CONTROL, "/v1/connector/capabilities")
+            assert status == 200 and "Set-Cookie" not in headers and "Location" not in headers
+            capability_headers = {key.lower(): value for key, value in json.loads(data)["headers"].items()}
+            assert "authorization" not in capability_headers and "cookie" not in capability_headers
+            assert request(port, CONTROL, "/v1/connector/capabilities", method="POST")[0] == 405
+            assert request(port, CONTROL, "/v1/connector/capabilities/extra")[0] == 404
+            checks.append("credential-free exact capability GET and private health boundary")
             assert request(port, CONTROL, "/v1/connector/state/extra")[0] == 404
             assert request(port, CONTROL, "/v1/connector/pairings")[0] == 405
             assert request(port, NODE, "/v1/accounts/test/nodes")[0] == 404

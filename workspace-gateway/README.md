@@ -1,5 +1,7 @@
 # Ambient Workspace Gateway
 
+This independent proposal branch adds explicit until-revoked grants and credential-free capability discovery. It is not deployed; the original project main and current cloud authorization database remain unchanged. See [the proposal and deployment gates](../docs/developers/AMBIENT_UNTIL_REVOKED_PROPOSAL_2026-10-02.md).
+
 This single-process HTTP/WebSocket relay sits beside Web and Platform. Ambient owns the local workspace, secrets, Apps and Runs. Gateway never schedules a Run or stores proxied business bodies. The original [proposal](../docs/architecture/WORKSPACE_GATEWAY_PROPOSAL.md) is a design baseline; the contracts below describe the reviewed implementation on this branch. Source changes do not prove a production deployment.
 
 ## Run and configure
@@ -17,8 +19,8 @@ Run one process and one replica. Its event loop atomically maintains admission a
 
 1. Signed-in portal BFF calls service-authenticated POST /v1/accounts/{account_id}/enrollments with {label}, 1..200 characters; account and label come from the server-side session. Response: {enrollment_token,expires_at}.
 2. Owner transfers that one-use enrollment token to local Ambient. It expires after at most 300 seconds. Treat it as a bearer secret; exclude it from query strings, logs and browser persistent storage.
-3. Ambient calls public POST /v1/connector/pairings with {enrollment_token,name,scopes,expires_in}. Name is 1..100 characters; scopes require workspace.control and may include workspace.manage; grant lifetime is 300 seconds..30 days. Response retains {node_id,connector_token,pairing_code,pairing_expires_at,expires_at,workspace_origin}.
-4. Enrollment consumption and pending-node creation commit in one SQLite transaction. The node belongs to the enrollment account immediately. Existing POST /v1/accounts/{account_id}/pairings/claim with {code,label} must match that account; cross-account rejection preserves the code.
+3. Ambient calls public POST /v1/connector/pairings with {enrollment_token,name,scopes,expires_in} and optional strict JSON boolean until_revoked (default false). Name is 1..100 characters; scopes require workspace.control and may include workspace.manage; expires_in remains 300 seconds..30 days. Explicit until_revoked=true instead creates a revocable grant with exact expires_at="9999-01-01T00:00:00Z"; existing grants are never extended. Response retains {node_id,connector_token,pairing_code,pairing_expires_at,expires_at,workspace_origin}.
+4. Before requesting until_revoked, Ambient makes credential-free GET /v1/connector/capabilities on the public control origin (no Cookie, Authorization, body, query, or redirects). It returns {supported_grant_modes:["bounded","until_revoked"]}; unsupported/malformed capability responses fail before the pairing POST. Enrollment consumption and pending-node creation commit in one SQLite transaction. The node belongs to the enrollment account immediately. Existing POST /v1/accounts/{account_id}/pairings/claim with {code,label} must match that account; cross-account rejection preserves the code.
 5. Ambient displays claimed account, scopes and expiry. Local POST /v1/connector/approve still requires device Bearer and matching {account_id,grant_id}. Only a paired node can open /v1/connector/tunnel.
 6. Service-authenticated POST /v1/accounts/{account_id}/nodes/{node_id}/launch returns {url,expires_at}. The node host consumes /_ambient/launch?ticket=... once and redirects to /. HTTPS cookie is __Host-ambient_workspace, Secure, HttpOnly, SameSite=Lax, Path=/, no Domain. HTTP localhost uses ambient_workspace.
 

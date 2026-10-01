@@ -43,6 +43,10 @@ renderer 验证域名、私网、证书 SAN、密钥匹配和至少24小时剩�
 
 ## 构建、发布与回退
 
+### 本建议的长期授权能力
+
+本建议分支新增 exact GET `/v1/connector/capabilities`，供 Ambient 在长期配对前执行无凭证检测；`/health`、指标、账户接口及能力路径后缀仍不公开。该路由沿用控制请求限流，返回静态支持模式、不设置 Cookie 或跳转。[协议与部署门禁](../developers/AMBIENT_UNTIL_REVOKED_PROPOSAL_2026-10-02.md)要求 Gateway 镜像和重新渲染的 ingress 一同更新，不修改已有许可期限；当前原公网部署尚未应用。
+
 从固定父仓库与子模块版本在足够内存的 Linux/amd64 主机离线构建 Web/Gateway 镜像，保存镜像ID、源码修订和SHA-256；不要在现有小内存ECS执行Web next build。依[部署指南](DEPLOYMENT.md)备份现有Web/Platform及身份，上传镜像并校验，再按完整overlay组合发布。带日期的发布记录说明实际启用状态。
 
 默认应用预约预算为 256 MiB（`WORKSPACE_GATEWAY_BUFFER_BYTES=268435456`），容器上限仍为 384 MiB。Ambient 完整页面同时使用三条聊天 WS 和一条 Widget WS；此前 128 MiB 配置会拒绝第三条 WS。2026-10-01 的 Ambient 隔离验收在 256 MiB 下完成一个 Tunnel、四条浏览器 WS 与页面加载，Windows Gateway 工作集峰值约 61 MB。预约预算不是 RSS 上限，这份短时验收也不证明 Linux 满队列或多节点容量；上线监看实际 RSS、OOM、预约及背压，超额拒绝不得靠清空节点身份恢复。

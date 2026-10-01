@@ -109,6 +109,22 @@ class IngressPolicyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ingress.validate_settings(values)
 
+    def test_capabilities_are_exact_get_on_control_host_without_private_route_expansion(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "config"
+            with patch.object(ingress, "validate_certificate"):
+                ingress.render(settings(), output, "openssl")
+            text = (output / "workspace.conf").read_text(encoding="utf-8")
+            control = text.split("server_name connect.example-workspace.com;", 1)[1].split("\nserver {", 1)[0]
+            capability = control.split("location = /v1/connector/capabilities {", 1)[1].split("\n    }", 1)[0]
+            self.assertIn('if ($request_method != GET) { return 405; }', capability)
+            self.assertIn("limit_req zone=workspace_control", capability)
+            self.assertIn("proxy_pass http://workspace_gateway;", capability)
+            self.assertIn("location / { return 404; }", control)
+            for private in ("/health", "/v1/metrics", "/v1/accounts"):
+                self.assertNotIn("location = " + private, control)
+            self.assertEqual(1, text.count("location = /v1/connector/capabilities {"))
+
     def test_unknown_suffix_is_rejected(self):
         values = settings()
         values["WORKSPACE_GATEWAY_DOMAIN"] = "nodes.workspace.not-a-real-tld"

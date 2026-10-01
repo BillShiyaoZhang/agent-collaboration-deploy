@@ -15,17 +15,19 @@ import ipaddress
 import math
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
+from datetime import datetime, timedelta, UTC
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import RedirectResponse, Response, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.requests import ClientDisconnect
 from .safeguards import Resources, RateTable, validate_origins
 
 COOKIE = "ambient_workspace"
+UNTIL_REVOKED_EPOCH = 253370764800
 SECURE_COOKIE = "__Host-ambient_workspace"
 SCOPES = {"workspace.control", "workspace.manage"}
 HOP_HEADERS = {
@@ -47,7 +49,7 @@ def digest(value: str) -> str:
 
 
 def iso(value: float | None) -> str | None:
-    return datetime.fromtimestamp(value, UTC).isoformat().replace("+00:00", "Z") if value is not None else None
+    return (datetime(1970, 1, 1, tzinfo=UTC) + timedelta(seconds=value)).isoformat().replace("+00:00", "Z") if value is not None else None
 
 
 @dataclass
@@ -176,6 +178,7 @@ class PairBody(BaseModel):
     enrollment_token: str = Field(min_length=20, max_length=128)
     scopes: list[str] = Field(default_factory=lambda: ["workspace.control"], min_length=1, max_length=2)
     expires_in: int = Field(default=86400, ge=300, le=30 * 86400)
+    until_revoked: bool = Field(default=False, strict=True)
 
 
 class ClaimBody(BaseModel):
@@ -684,6 +687,11 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
                     control_host(request, service=service_route)
                     if service_route:
                         auth_secret(request)
+                    elif request.url.path == "/v1/connector/capabilities":
+                        if request.method != "GET":
+                            raise HTTPException(405, "Capabilities require GET")
+                        if "authorization" in request.headers or "cookie" in request.headers or scope.get("query_string"):
+                            raise HTTPException(400, "Capabilities require a credential-free request without query")
                     elif request.url.path.startswith("/v1/connector/") and request.url.path != "/v1/connector/pairings":
                         device_node(request)
                     elif request.url.path == "/v1/connector/pairings":
@@ -724,6 +732,15 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
                 resources.release(lease)
 
     app.add_middleware(Boundary)
+
+    @app.exception_handler(RequestValidationError)
+    async def invalid_request(request: Request, error: RequestValidationError):
+        return JSONResponse({"detail": "Invalid request fields"}, status_code=422)
+
+    @app.get("/v1/connector/capabilities")
+    async def capabilities(request: Request):
+        control_host(request)
+        return JSONResponse({"supported_grant_modes": ["bounded", "until_revoked"]}, headers={"Cache-Control": "no-store"})
 
     @app.get("/health")
     async def health(request: Request):
@@ -797,7 +814,7 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
                 stamp + config.pairing_ttl,
                 grant,
                 json.dumps(body.scopes),
-                stamp + body.expires_in,
+                UNTIL_REVOKED_EPOCH if body.until_revoked else stamp + body.expires_in,
                 stamp,
                 account_id,
                 enrollment_hash,
