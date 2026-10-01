@@ -38,3 +38,7 @@
 | [Web 同步恢复验证](../../agent-collaboration-web/tests/integration/workspace-resilience.cjs) | 离线保存、进程重启、重连和避免重放发送 |
 
 运行参数和依赖以脚本帮助、[测试说明](../../tests/README.md)、[SDK README](../../agent-comm-platform/agent-comm/README.md) 与 [Web 技术参考](../../agent-collaboration-web/docs/architecture/TECHNICAL_REFERENCE.md) 为准。使用独立临时身份与数据目录；生成证据保存在忽略的 `build/` 中。
+
+## Ambient Workspace 联调分支验证
+
+- [2026-10-01 云端实现验证](WORKSPACE_GATEWAY_CLOUD_2026-10-01.md)：Gateway/Web/入口/备份的隔离结果及未覆盖范围；未合入main、未部署、Ambient真实联调待完成。

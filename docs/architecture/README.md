@@ -5,7 +5,7 @@
 - [流程图](FLOWS.md)：配对、读取、授权、投递和恢复。
 - [产品决策](DECISIONS.md)：从早期探索中保留的身份、授权、记忆和持久状态原则。
 - [Ambient 云入口 proposal 评审](WORKSPACE_GATEWAY_REVIEW_2026-10-01.md)：架构适配、已复现的公开上线阻碍与后续验收门槛；proposal 尚未合入或部署。
-- [Ambient 工作区 Gateway 提案](WORKSPACE_GATEWAY_PROPOSAL.md)：独立建议副本中的本机工作区入口、双重确认授权及 HTTP/WebSocket 中转边界；未上线。
+- [Ambient 工作区 Gateway 提案](WORKSPACE_GATEWAY_PROPOSAL.md)：联调分支的接入码、双重确认授权及 HTTP/WebSocket 中转边界；未上线。
 
 [可验证的隐私与合规解密 v2](COMPLIANCE_GATEWAY.md)：初版源码、信任边界、本地验收与尚未实现的加强项；现网签名策略为 `compliance`（epoch 3 长期策略、`allow_v1=false`），普通旧 v1 Agent 间路径被拒，Relay 禁用。2026-09-24 发布的 v0.8.0 接入包仍要求手工固定对端完整公钥；v0.9.1 支持同一 Platform 下凭准确 URN 首联。当前公开版本以实际发布清单为准。
 

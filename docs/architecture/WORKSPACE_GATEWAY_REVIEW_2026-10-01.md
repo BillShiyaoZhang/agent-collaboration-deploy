@@ -1,4 +1,6 @@
 # Ambient 云入口 proposal 评审与上线讨论 — 2026-10-01
+> 后续云端实现及 Ambient 接口适配见[交接文档](../developers/AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)。下文保留固定旧提案的历史缺陷证据，不能用其测试结果评价当前分支。
+
 
 ## 结论
 

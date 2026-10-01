@@ -14,9 +14,15 @@ from workspace_gateway.app import GatewayConfig, create_app
 SERVICE = {"Authorization": "Bearer test-service-secret"}
 
 
+def enrollment_token(client, account="alice"):
+    response = client.post(f"/v1/accounts/{account}/enrollments", headers=SERVICE, json={"label": account})
+    assert response.status_code == 200, response.text
+    return response.json()["enrollment_token"]
+
+
 def setup_node(client, account="alice", expires_in=3600):
     pair = client.post(
-        "/v1/connector/pairings", json={"name": "My Ambient", "scopes": ["workspace.control"], "expires_in": expires_in}
+        "/v1/connector/pairings", json={"name": "My Ambient", "scopes": ["workspace.control"], "expires_in": expires_in, "enrollment_token": enrollment_token(client, account)}
     ).json()
     device = {"Authorization": "Bearer " + pair["connector_token"]}
     claimed = client.post(
@@ -60,7 +66,7 @@ def launch(client, pair, account="alice"):
 def test_pairing_claim_requires_local_confirmation_and_is_single_use(app):
     with TestClient(app) as client:
         pair = client.post(
-            "/v1/connector/pairings", json={"name": "Home", "scopes": ["workspace.control"], "expires_in": 3600}
+            "/v1/connector/pairings", json={"name": "Home", "scopes": ["workspace.control"], "expires_in": 3600, "enrollment_token": enrollment_token(client)}
         ).json()
         device = {"Authorization": "Bearer " + pair["connector_token"]}
         assert (
@@ -94,7 +100,7 @@ def test_pairing_claim_requires_local_confirmation_and_is_single_use(app):
             ).status_code
             == 200
         )
-        assert client.get("/v1/accounts/bob/nodes", headers=SERVICE).json() == {"nodes": []}
+        assert client.get("/v1/accounts/bob/nodes", headers=SERVICE).json() == {"nodes": [], "next_cursor": None}
         assert client.delete(f"/v1/accounts/bob/nodes/{pair['node_id']}", headers=SERVICE).status_code == 404
 
 
@@ -299,7 +305,7 @@ def test_wrong_workspace_host_cannot_consume_ticket(app):
 
 def test_pairing_and_launch_expiry(app):
     with TestClient(app) as client:
-        pair = client.post("/v1/connector/pairings", json={"name": "Expired", "expires_in": 3600}).json()
+        pair = client.post("/v1/connector/pairings", json={"name": "Expired", "expires_in": 3600, "enrollment_token": enrollment_token(client)}).json()
         expiry = datetime.fromisoformat(pair["pairing_expires_at"].replace("Z", "+00:00")).timestamp()
         app.state.clock = lambda: expiry + 1
         assert (
@@ -414,7 +420,7 @@ def test_account_bulk_revoke_only_affects_own_nodes(app):
             assert tunnel.receive_json()["type"] == "revoked"
             assert all(
                 n["status"] == "revoked"
-                for n in client.get("/v1/accounts/alice/nodes", headers=SERVICE).json()["nodes"]
+                for n in client.get("/v1/accounts/alice/nodes?view=history", headers=SERVICE).json()["nodes"]
             )
             assert client.get("/v1/accounts/bob/nodes", headers=SERVICE).json()["nodes"][0]["status"] == "paired"
 
@@ -437,7 +443,7 @@ def test_account_deletion_is_terminal_and_idempotent(app):
             ).status_code
             == 409
         )
-        next_pair = client.post("/v1/connector/pairings", json={"name": "New"}).json()
+        next_pair = client.post("/v1/connector/pairings", json={"name": "New", "enrollment_token": enrollment_token(client, "bob")}).json()
         assert (
             client.post(
                 "/v1/accounts/alice/pairings/claim",

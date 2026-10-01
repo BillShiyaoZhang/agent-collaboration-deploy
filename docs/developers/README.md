@@ -42,3 +42,7 @@ cd agent-collaboration-deploy
 - [尚未实现的扩展方向](FUTURE_DIRECTIONS.md)：外部执行、代表权、关系事实与声誉的设计约束，不是现行功能承诺。
 - [发布记录](../releases/README.md)、[验证记录](../verification/README.md)：只证明相应日期和环境的结果。部署前核对实际提交、镜像和[公开下载清单](https://agent-communication.online/downloads/release-manifest.json)。
 - [文档维护规则](../maintenance/REPOSITORY_MAINTENANCE.md)：修复行为时同步更新该读者会查找的操作说明；不要把过时的阶段计划写成现行能力。
+
+## Ambient Workspace 联调
+
+- [云端实现与 Ambient 交接（2026-10-01）](AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)：账户接入码、客户端适配、固定子模块及合并门禁；分支未上线。

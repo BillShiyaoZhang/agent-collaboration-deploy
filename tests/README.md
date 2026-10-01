@@ -15,3 +15,12 @@
 
 先递归初始化子模块。网络检查使用临时身份和本地进程，结果存于忽略的 `build/`。
 具体通过范围记录在 [verification](../docs/verification/README.md)，不能将纯本地检查当成线上验收。
+
+## Ambient Workspace 云端分支
+
+- 在 `workspace-gateway/` 运行 `python -m pytest -q`：使用临时SQLite/假Connector验证授权、接入码、配额、分页、清理、代理与资源释放。
+- [入口配置测试](../tools/workspace/tests/)：`python -m unittest discover -s tools/workspace/tests -v`；[真实nginx隔离检查](../tools/workspace/check_ingress.py)：`python tools/workspace/check_ingress.py`，需要Docker Linux引擎、缓存镜像和OpenSSL。自签名合成TLS不证明公网证书可信。
+- [真实Web/Gateway HTTPS smoke](integration/test_workspace_portal_gateway.py)：先构建Web，再用已装Gateway依赖的Python运行该脚本。自动生成loopback测试TLS/SQLite/服务秘密，区分内部BFF与公开Connector Host，执行真实NextAuth/接入码/本机确认/删账户流程并清理自建进程；不读取dotenv，不输出测试密码。用 `--help` 指定Node/OpenSSL/解释器。\n- [授权状态备份测试](../tools/maintenance/tests/test_backup_workspace_gateway.py)：`python -m unittest discover -s tools/maintenance/tests -p test_backup_workspace_gateway.py -v`，检查在线WAL、身份/删除记录与不可覆盖。
+- Web组件测试按其[测试文档](../agent-collaboration-web/tests/README.md)运行；实际环境/结果见[2026-10-01记录](../docs/verification/WORKSPACE_GATEWAY_CLOUD_2026-10-01.md)，本机适配见[交接](../docs/developers/AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)。
+
+历史 `review_workspace_gateway_limits.py` 断言旧提案缺陷，应指向固定提交 `94aeccbbf82aa855a2d430b6e34193789a99bff1` 的独立源码；不能把它当修复后Gateway回归测试。

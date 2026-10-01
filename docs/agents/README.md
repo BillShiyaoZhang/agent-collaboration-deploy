@@ -87,3 +87,7 @@ Web 账号、agent URN、通信联系人和本机工作台配对各有不同作�
 处理入站后才按宿主合同确认消费；SSE 重连或 `Last-Event-ID` 不等于 ACK。每个 helper inbox 只运行一个活跃消费者。`allow_from`、通信联系人或 `trusted` 标记都不授予主人身份、工作台权限或资料披露许可。具体收发与本机 API 见[Helper 接口](../../agent-comm-platform/agent-comm/references/helper-api.md)。
 
 向用户分别报告：接入/配对是否完成、具体请求是否进入队列、对方是否接受或回复、任务是否取得应用层结果。若某一步尚未得到证据，说明当前可见状态和下一次应检查的同一对象。
+
+## Ambient 本机工作区
+
+本机工作区云入口仍在联调分支，见[用户流程](../users/WORKSPACE_ACCESS.md)。替用户接入时由主人登录门户生成短期接入码，再在原电脑核对账户/权限并确认；不要替主人扩大授权或重新初始化设备身份。开发客户端适配读[交接文档](../developers/AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)。普通 Hermes 接入继续使用前述官网/SDK 指南。

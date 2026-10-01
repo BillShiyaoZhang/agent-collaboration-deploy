@@ -193,3 +193,7 @@ docker exec agent-nginx nginx -s reload
 ```
 
 新服务器需安装该 hook、配置正确的 webroot 并完成续期演练。现有服务器的配置来源与初次续期证据见 [早期发布记录](../releases/EARLY_ACCESS_RELEASE_2026-09-14.md#https-续期修复)。
+
+## 可选 Ambient 工作区入口
+
+联调分支增加可选 Workspace Gateway 与独立域名 nginx overlay。完整准备、四文件 Compose 组合、证书续期和状态备份见[Workspace 运维](WORKSPACE_GATEWAY.md)。需先完成[Ambient 侧交接与联调](../developers/AMBIENT_WORKSPACE_HANDOFF_2026-10-01.md)，本次源码不代表现网已启用。

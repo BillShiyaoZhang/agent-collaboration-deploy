@@ -1,0 +1,53 @@
+# Add after the base, v2 (when enabled), and workspace overlays.
+# First render/validate certificates with tools/workspace/render_ingress.py.
+services:
+  nginx:
+    volumes:
+      - type: bind
+        source: ${WORKSPACE_NGINX_CONFIG_DIR:?Set the rendered workspace nginx directory}
+        target: /etc/nginx/workspace-enabled
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${WORKSPACE_CONTROL_CERT_DIR:?Set the separate control certificate directory}
+        target: /etc/nginx/workspace-tls/control
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${WORKSPACE_NODE_CERT_DIR:?Set the wildcard node certificate directory}
+        target: /etc/nginx/workspace-tls/node
+        read_only: true
+        bind:
+          create_host_path: false
+    networks:
+      agent-net: {}
+      workspace-ingress:
+        ipv4_address: ${WORKSPACE_INGRESS_NGINX_IP:-172.30.80.2}
+    depends_on:
+      - workspace-gateway
+  workspace-gateway:
+    environment:
+      WORKSPACE_GATEWAY_SCHEME: https
+      WORKSPACE_GATEWAY_DOMAIN: ${WORKSPACE_GATEWAY_DOMAIN:?Set the separate workspace node domain}
+      WORKSPACE_GATEWAY_CONTROL_HOST: ${WORKSPACE_GATEWAY_CONTROL_HOST:?Set the exact public connector hostname}
+      WORKSPACE_GATEWAY_PORTAL_ORIGIN: ${NEXTAUTH_URL:?Set the HTTPS portal origin}
+      WORKSPACE_GATEWAY_TRUSTED_PROXY_CIDRS: ${WORKSPACE_INGRESS_NGINX_IP:-172.30.80.2}/32
+    networks:
+      agent-net: {}
+      workspace-ingress:
+        ipv4_address: ${WORKSPACE_INGRESS_GATEWAY_IP:-172.30.80.3}
+        aliases:
+          - workspace-ingress-upstream
+  web:
+    environment:
+      WORKSPACE_GATEWAY_PUBLIC_URL: ${WORKSPACE_GATEWAY_PUBLIC_URL:?Set the HTTPS connector origin}
+      WORKSPACE_GATEWAY_DOMAIN: ${WORKSPACE_GATEWAY_DOMAIN:?Set the separate workspace node domain}
+networks:
+  workspace-ingress:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: ${WORKSPACE_INGRESS_SUBNET:-172.30.80.0/29}
