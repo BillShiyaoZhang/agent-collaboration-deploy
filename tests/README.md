@@ -9,6 +9,7 @@
 - [生产单 Platform URN 首联验收](integration/test_live_urn_contact.py)：**显式选择后才运行**，要求新 helper 二进制、HTTPS Platform 地址、经核对的发布信任文件和预期签名策略哈希。生成两套临时合成身份，在现网执行好友申请、拒绝、重新申请与接受、未连接业务隔离、双向通信和已读；退出时清除本机合成私钥，Platform 上的合成公开注册按正常有效期保留。不使用已有 Hermes 身份，不能代替真人体验测试。
 - [Agent / Web 能力一致性](integration/test_agent_web_parity_network.py)：旧 v1 协议回归，使用旧版 helper 二进制，验证自动注册、好友往返、双端消息、共享已读与好友在线状态；新版 helper 的 v2 路径由上述新验收覆盖。参数同上。
 - Web 的完整登录、配对与同步验证位于 [Web 集成测试](../agent-collaboration-web/tests/README.md)。
+- [Ambient Gateway proposal 资源复现](integration/review_workspace_gateway_limits.py)：显式传入尚未合并的固定 proposal Gateway 目录，用临时 SQLite 与 ASGI 模拟复现容量、重复撤销审计和慢请求问题；只用于[评审讨论](../docs/architecture/WORKSPACE_GATEWAY_REVIEW_2026-10-01.md)，不访问生产、不代表真实负载验收。
 - 安装包的隔离单元测试位于 `tools/release/early_access/tests/`。
 - [部署安全入口检查](integration/test_deployment_security.py)：运行 `python tests/integration/test_deployment_security.py`，用 Docker 隔离容器验证缺少密钥时启动失败、nginx 实际认证限流、请求体限制和代理头覆盖；可用 `NGINX_TEST_IMAGE` 指定已有 nginx 镜像，设置 `WEB_TEST_IMAGE` 为本地构建的 Web 镜像后额外验证迁移/服务降权及旧卷文件保留。
 
