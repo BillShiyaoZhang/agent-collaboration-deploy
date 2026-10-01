@@ -460,6 +460,10 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
 
     def host_node(connection):
         host = connection.headers.get("host", "").lower().rstrip(".")
+        # A wildcard certificate may cover both the exact connector Host and
+        # node subdomains. Only the configured connector bypasses node parsing.
+        if host == config.control_host:
+            return None
         suffix = "." + config.workspace_domain
         if not host.endswith(suffix):
             return None

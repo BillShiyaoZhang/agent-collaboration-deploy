@@ -621,3 +621,33 @@ def test_mixed_unicode_transport_and_browser_queue_reservations_cover_real_pytho
         pipe.clear()
         assert resources.buffer_bytes == 0
     asyncio.run(exercise())
+
+
+@pytest.mark.parametrize("mode,portal", [
+    ("same-site-subdomains", "https://portal.example.com"),
+    ("separate-site", "https://portal.example.net"),
+])
+def test_exact_control_subdomain_is_not_classified_as_a_node(tmp_path, mode, portal):
+    cfg = GatewayConfig(database=str(tmp_path / "state.sqlite3"), secret="synthetic-service-secret-at-least-32",
+        scheme="https", workspace_domain="workspace.example.com", control_host="gateway.workspace.example.com",
+        service_host="workspace-gateway:8090", portal_origin=portal, origin_mode=mode)
+    app = create_app(cfg)
+    service = {"Authorization": "Bearer " + cfg.secret}
+    control = "https://" + cfg.control_host
+    with TestClient(app, base_url="http://workspace-gateway:8090") as client:
+        assert client.get(control + "/health").status_code == 200
+        token = client.post("/v1/accounts/synthetic/enrollments", headers=service, json={"label": "test"}).json()["enrollment_token"]
+        response = client.post(control + "/v1/connector/pairings", json={"name": "test", "enrollment_token": token})
+        assert response.status_code == 200
+        pair = response.json()
+        claimed = client.post("/v1/accounts/synthetic/pairings/claim", headers=service,
+            json={"code": pair["pairing_code"], "label": "test"}).json()
+        device = {"Authorization": "Bearer " + pair["connector_token"]}
+        assert client.post(control + "/v1/connector/approve", headers=device,
+            json={"account_id": "synthetic", "grant_id": claimed["grant_id"]}).status_code == 200
+        assert client.get(control + "/v1/connector/state", headers=device).json()["status"] == "paired"
+        with client.websocket_connect(control.replace("https:", "wss:") + "/v1/connector/tunnel", headers=device) as tunnel:
+            assert tunnel.receive_json()["type"] == "hello"
+        assert client.get("https://unknown.workspace.example.com/v1/connector/state", headers=device).status_code == 404
+        assert client.get(pair["workspace_origin"] + "/v1/connector/state", headers=device).status_code == 404
+        assert client.get(portal + "/health").status_code == 404
